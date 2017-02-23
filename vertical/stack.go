@@ -14,30 +14,44 @@
 
 package vertical
 
-type StackItem struct {
+type stackItem struct {
 	value *VerticalMetaLine
-	prev  *StackItem
+	prev  *stackItem
 }
 
+// ---------------------------------------------------------
+
+// Stack represents a data structure used to keep
+// vertical file (xml-like) metadata. It is implemented
+// as a simple linked list
 type Stack struct {
-	last *StackItem
+	last *stackItem
 }
 
+// NewStack creates a new Stack instance
 func NewStack() *Stack {
 	return &Stack{}
 }
 
+// Push adds an item at the beginning
 func (s *Stack) Push(value *VerticalMetaLine) {
-	item := &StackItem{value: value, prev: s.last}
+	item := &stackItem{value: value, prev: s.last}
 	s.last = item
 }
 
+// Pop takes the first element
 func (s *Stack) Pop() *VerticalMetaLine {
 	item := s.last
 	s.last = item.prev
 	return item.value
 }
 
+// Peek returns the first element (without removing)
+func (s *Stack) Peek() *VerticalMetaLine {
+	return s.last.value
+}
+
+// Size returns a size of the stack
 func (s *Stack) Size() int {
 	size := 0
 	item := s.last
@@ -53,6 +67,11 @@ func (s *Stack) Size() int {
 	return size
 }
 
+// GetAttrs returns all the actual structural attributes
+// and their values found on stack.
+// Elements are encoded as follows:
+// [struct_name].[attr_name]=[value]
+// (e.g. doc.author="Isaac Asimov")
 func (s *Stack) GetAttrs() map[string]string {
 	ans := make(map[string]string)
 	curr := s.last
