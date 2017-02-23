@@ -15,11 +15,12 @@
 package index
 
 import (
-	"github.com/tomachalek/gloomy/vertical"
-	"github.com/tomachalek/gloomy/wstore"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/tomachalek/gloomy/vertical"
+	"github.com/tomachalek/gloomy/wstore"
 )
 
 type IndexBuilder struct {
@@ -29,7 +30,7 @@ type IndexBuilder struct {
 	uniqSuccNum   map[string]map[string]bool
 }
 
-func (b *IndexBuilder) ProcessLine(vline *vertical.VerticalLine) {
+func (b *IndexBuilder) ProcessLine(vline *vertical.VerticalLine, stack *vertical.Stack) {
 	if vline != nil {
 		//fmt.Println("LINE: ", vline)
 		if b.prevItem != nil {
@@ -53,7 +54,7 @@ func createWord2IntDict(data map[string]map[string]bool, outPath string) error {
 	return wstore.SaveWordDict(index, outPath)
 }
 
-func ProcessVertical(conf *vertical.ParserConf) {
+func CreateGloomyIndex(conf *vertical.ParserConf) {
 	baseIndexPath := filepath.Join(conf.OutDirectory, "baseindex.glm")
 	outFile, err := os.OpenFile(baseIndexPath, os.O_CREATE, 0)
 	if err != nil {

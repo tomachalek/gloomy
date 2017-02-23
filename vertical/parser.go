@@ -16,12 +16,18 @@ package vertical
 
 import (
 	"bufio"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
+)
+
+const (
+	channelChunkSize = 500
 )
 
 // --------------------------------------------------------
@@ -31,6 +37,8 @@ type ParserConf struct {
 	FilterArgs         map[string]string `json:"filterArgs"`
 	NgramIgnoreStructs []string          `json:"ngramIgnoreStructs"`
 	OutDirectory       string            `json:"outDirectory"`
+	NgramStopStrings   []string          `json:"ngramStopStrings"`
+	NgramIgnoreStrings []string          `json:"ngramIgnoreStrings"`
 }
 
 func LoadConfig(path string) *ParserConf {
@@ -67,7 +75,7 @@ type VerticalMetaLine struct {
 // --------------------------------------------------------
 
 type LineProcessor interface {
-	ProcessLine(vline *VerticalLine)
+	ProcessLine(vline *VerticalLine, stack *Stack)
 }
 
 // --------------------------------------------------------
@@ -104,11 +112,8 @@ func parseLine(line string, elmStack *Stack) *VerticalLine {
 	case isOpenElement(line):
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
 		elmStack.Push(meta)
-		fmt.Println(meta)
-		break
 	case isCloseElement(line):
 		elmStack.Pop()
-		break
 	case isSelfCloseElement(line):
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
 	default:
@@ -126,14 +131,68 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 	if err != nil {
 		panic(err)
 	}
+
+	var rd io.Reader
+	if strings.HasSuffix(conf.VerticalFilePath, ".gz") {
+		rd, err = gzip.NewReader(f)
+		if err != nil {
+			panic(err)
+		}
+
+	} else {
+		rd = f
+	}
+	brd := bufio.NewScanner(rd)
+
+	stack := NewStack()
+
+	ch := make(chan []*VerticalLine)
+	chunk := make([]*VerticalLine, channelChunkSize)
+	go func() {
+		i := 0
+		for brd.Scan() {
+			line := parseLine(brd.Text(), stack)
+			chunk[i] = line
+			if i == channelChunkSize-1 {
+				i = 0
+				ch <- chunk
+			}
+			/*
+				fmt.Println("LINE: ", line)
+				fmt.Println("ROLL: ", stack.GetAttrs())
+				fmt.Println("----------------------")
+			*/
+		}
+		close(ch)
+	}()
+
+	for items := range ch {
+		for _, item := range items {
+			lproc.ProcessLine(item, stack)
+		}
+	}
+
+	fmt.Println("DONE: stack size: ", stack.Size())
+}
+
+//ParseVerticalFileNoGoRo is just for benchmarking purposes
+func ParseVerticalFileNoGoRo(conf *ParserConf, lproc LineProcessor) {
+	f, err := os.Open(conf.VerticalFilePath)
+	if err != nil {
+		panic(err)
+	}
 	rd := bufio.NewScanner(f)
 	stack := NewStack()
+
 	for rd.Scan() {
 		line := parseLine(rd.Text(), stack)
-		fmt.Println("LINE: ", line)
-		fmt.Println("ROLL: ", stack.GetAttrs())
-		fmt.Println("----------------------")
-		lproc.ProcessLine(line)
+		/*
+			fmt.Println("LINE: ", line)
+			fmt.Println("ROLL: ", stack.GetAttrs())
+			fmt.Println("----------------------")
+		*/
+		lproc.ProcessLine(line, stack)
 	}
+
 	fmt.Println("DONE: stack size: ", stack.Size())
 }

@@ -1,0 +1,8 @@
+{
+  "verticalFilePath": "/home/tomas/work/data/vertikaly/syn_v4-12doc.txt.gz",
+  "filterArgs": {},
+  "ngramIgnoreStructs": [],
+  "ngramStopStrings": [".", ":"],
+  "ngramIgnoreStrings": ["\"", ","],
+  "outDirectory": "/home/tomas/work/data/ngramy/syn_v4"
+}

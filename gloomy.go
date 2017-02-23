@@ -17,17 +17,25 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/tomachalek/gloomy/index"
-	"github.com/tomachalek/gloomy/vertical"
 	"os"
 	"path/filepath"
+	"time"
+
+	"github.com/tomachalek/gloomy/index"
+	"github.com/tomachalek/gloomy/tools"
+	"github.com/tomachalek/gloomy/vertical"
+)
+
+const (
+	createIndexAction   = "create-index"
+	extractNgramsAction = "extract-ngrams"
 )
 
 func help() {
 	fmt.Println("HELP:")
 }
 
-func importVertical(conf *vertical.ParserConf) {
+func createIndex(conf *vertical.ParserConf) {
 	if conf.VerticalFilePath == "" {
 		fmt.Println("Vertical file not specified")
 		os.Exit(1)
@@ -37,11 +45,26 @@ func importVertical(conf *vertical.ParserConf) {
 		conf.OutDirectory = filepath.Dir(conf.VerticalFilePath)
 	}
 	fmt.Println("Output directory: ", conf.OutDirectory)
-	index.ProcessVertical(conf)
+	index.CreateGloomyIndex(conf)
+}
 
+func extractNgrams(conf *vertical.ParserConf, ngramSize int) {
+	if conf.VerticalFilePath == "" {
+		fmt.Println("Vertical file not specified")
+		os.Exit(1)
+	}
+	fmt.Println("Processing vertical file ", conf.VerticalFilePath)
+	if conf.OutDirectory == "" {
+		conf.OutDirectory = filepath.Dir(conf.VerticalFilePath)
+	}
+	fmt.Println("Output directory: ", conf.OutDirectory)
+	t0 := time.Now()
+	tools.ExtractNgrams(conf, ngramSize)
+	fmt.Printf("DONE in %s\n", time.Since(t0))
 }
 
 func main() {
+	ngramSize := flag.Int("ngram-size", 2, "N-gram size, 2: bigram (default), ...")
 	flag.Parse()
 	if len(flag.Args()) == 0 {
 		fmt.Println("Missing action, try -h for help")
@@ -51,12 +74,12 @@ func main() {
 		switch flag.Arg(0) {
 		case "help":
 			help()
-		case "import-vertical":
+		case createIndexAction:
 			conf := vertical.LoadConfig(flag.Arg(1))
-			importVertical(conf)
-		case "import-words":
-			// TODO
-			break
+			createIndex(conf)
+		case extractNgramsAction:
+			conf := vertical.LoadConfig(flag.Arg(1))
+			extractNgrams(conf, *ngramSize)
 		default:
 			panic("Unknown action")
 		}
