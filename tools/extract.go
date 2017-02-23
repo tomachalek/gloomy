@@ -15,10 +15,9 @@
 package tools
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"fmt"
 
 	"github.com/tomachalek/gloomy/vertical"
 )
@@ -53,6 +52,22 @@ func (n *NgramExtractor) isIgnoreWord(w string) bool {
 	return false
 }
 
+func (n *NgramExtractor) SaveNgrams(outPath string) error {
+	out, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err) // TODO what can we do here?
+	}
+	for k, v := range n.counter {
+		if v > 1 {
+			_, werr := out.WriteString(fmt.Sprintf("%s %d\n", k, v))
+			if werr != nil {
+				panic(werr)
+			}
+		}
+	}
+	return nil
+}
+
 // ProcessLine processes a parsed vertical file line
 func (n *NgramExtractor) ProcessLine(vline *vertical.Token) {
 	if vline != nil {
@@ -63,13 +78,11 @@ func (n *NgramExtractor) ProcessLine(vline *vertical.Token) {
 		} else if !n.isIgnoreWord(wordLC) {
 			n.buffer.AddToken(wordLC)
 			if n.buffer.IsValid() {
-				//fmt.Println("ngram: ", n.buffer.GetValue(), vline.StructAttrs)
-				n.counter[wordLC]++
+				n.counter[n.buffer.Stringer()]++
 			}
 		}
 
-	} else {
-		//fmt.Println("ELM: ", stack.Peek().Name)
+	} else { // parser encoutered a structure
 		n.buffer.Reset()
 	}
 }
@@ -78,12 +91,8 @@ func (n *NgramExtractor) ProcessLine(vline *vertical.Token) {
 
 // ExtractNgrams runs the n-gram extraction process
 func ExtractNgrams(conf *vertical.ParserConf, ngramSize int) {
-	baseIndexPath := filepath.Join(conf.OutDirectory, "ngrams.txt")
-	outFile, err := os.OpenFile(baseIndexPath, os.O_CREATE, 0644)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("OUT: ", outFile)
+	baseIndexPath := filepath.Join(conf.OutDirectory,
+		fmt.Sprintf("ngrams-%s", filepath.Base(conf.VerticalFilePath)))
 	extractor := &NgramExtractor{
 		ngramSize:   ngramSize,
 		buffer:      vertical.NewNgramBuffer(ngramSize),
@@ -93,4 +102,5 @@ func ExtractNgrams(conf *vertical.ParserConf, ngramSize int) {
 		counter:     make(map[string]int),
 	}
 	vertical.ParseVerticalFile(conf, extractor)
+	extractor.SaveNgrams(baseIndexPath)
 }

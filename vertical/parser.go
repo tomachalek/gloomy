@@ -182,6 +182,9 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 				ch <- chunk
 			}
 		}
+		if i > 0 {
+			ch <- chunk[:i]
+		}
 		close(ch)
 	}()
 

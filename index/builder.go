@@ -69,5 +69,4 @@ func CreateGloomyIndex(conf *vertical.ParserConf) {
 
 	wIndexPath := filepath.Join(conf.OutDirectory, "wordindex.glm")
 	createWord2IntDict(builder.uniqSuccNum, wIndexPath)
-	//fmt.Println("MAP: ", builder.uniqSuccNum)
 }
