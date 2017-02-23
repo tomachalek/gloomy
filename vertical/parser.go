@@ -39,7 +39,10 @@ func LoadConfig(path string) *ParserConf {
 		panic(err)
 	}
 	var conf ParserConf
-	json.Unmarshal(rawData, &conf)
+	err = json.Unmarshal(rawData, &conf)
+	if err != nil {
+		panic(err)
+	}
 	return &conf
 }
 
