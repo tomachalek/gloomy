@@ -27,20 +27,31 @@ import (
 )
 
 const (
-	channelChunkSize = 500
+	channelChunkSize = 30000 // please note that this affects the performance quite a lot
 )
 
 // --------------------------------------------------------
 
+// ParserConf contains configuration parameters for
+// vertical file parser
 type ParserConf struct {
-	VerticalFilePath   string            `json:"verticalFilePath"`
-	FilterArgs         map[string]string `json:"filterArgs"`
-	NgramIgnoreStructs []string          `json:"ngramIgnoreStructs"`
-	OutDirectory       string            `json:"outDirectory"`
-	NgramStopStrings   []string          `json:"ngramStopStrings"`
-	NgramIgnoreStrings []string          `json:"ngramIgnoreStrings"`
+
+	// Source vertical file (either a plain text file or a gzip one)
+	VerticalFilePath string `json:"verticalFilePath"`
+
+	FilterArgs map[string]string `json:"filterArgs"`
+
+	NgramIgnoreStructs []string `json:"ngramIgnoreStructs"`
+
+	OutDirectory string `json:"outDirectory"`
+
+	NgramStopStrings []string `json:"ngramStopStrings"`
+
+	NgramIgnoreStrings []string `json:"ngramIgnoreStrings"`
 }
 
+// LoadConfig loads the configuration from a JSON file.
+// In case of an error the program exits with panic.
 func LoadConfig(path string) *ParserConf {
 	rawData, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -56,12 +67,16 @@ func LoadConfig(path string) *ParserConf {
 
 // --------------------------------------------------------
 
-type VerticalLine struct {
-	Word  string
-	Attrs []string
+// Token is a representation of
+// a parsed line. It connects both, positional attributes
+// and currently accumulated structural attributes.
+type Token struct {
+	Word        string
+	Attrs       []string
+	StructAttrs map[string]string
 }
 
-func (v *VerticalLine) WordLC() string {
+func (v *Token) WordLC() string {
 	return strings.ToLower(v.Word)
 }
 
@@ -75,7 +90,7 @@ type VerticalMetaLine struct {
 // --------------------------------------------------------
 
 type LineProcessor interface {
-	ProcessLine(vline *VerticalLine, stack *Stack)
+	ProcessLine(vline *Token)
 }
 
 // --------------------------------------------------------
@@ -103,7 +118,7 @@ func parseAttrVal(src string) map[string]string {
 	return ans
 }
 
-func parseLine(line string, elmStack *Stack) *VerticalLine {
+func parseLine(line string, elmStack *Stack) *Token {
 	var meta *VerticalMetaLine
 	rg := regexp.MustCompile("<([\\w]+)(\\s*[^>]*)|>")
 	srch := rg.FindStringSubmatch(line)
@@ -118,14 +133,22 @@ func parseLine(line string, elmStack *Stack) *VerticalLine {
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
 	default:
 		items := strings.Split(line, "\t")
-		return &VerticalLine{
-			Word:  items[0],
-			Attrs: items[1:],
+		return &Token{
+			Word:        items[0],
+			Attrs:       items[1:],
+			StructAttrs: elmStack.GetAttrs(),
 		}
 	}
 	return nil
 }
 
+// ParseVerticalFile processes a corpus vertical file
+// line by line and applies a custom LineProcessor on
+// them. The processing is parallelized in the sense
+// that reading a file into lines and processing of
+// the lines runs in different goroutines. To reduce
+// overhead, the data are passed between goroutines
+// in chunks.
 func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 	f, err := os.Open(conf.VerticalFilePath)
 	if err != nil {
@@ -146,29 +169,25 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 
 	stack := NewStack()
 
-	ch := make(chan []*VerticalLine)
-	chunk := make([]*VerticalLine, channelChunkSize)
+	ch := make(chan []*Token)
+	chunk := make([]*Token, channelChunkSize)
 	go func() {
 		i := 0
 		for brd.Scan() {
 			line := parseLine(brd.Text(), stack)
 			chunk[i] = line
-			if i == channelChunkSize-1 {
+			i++
+			if i == channelChunkSize {
 				i = 0
 				ch <- chunk
 			}
-			/*
-				fmt.Println("LINE: ", line)
-				fmt.Println("ROLL: ", stack.GetAttrs())
-				fmt.Println("----------------------")
-			*/
 		}
 		close(ch)
 	}()
 
 	for items := range ch {
 		for _, item := range items {
-			lproc.ProcessLine(item, stack)
+			lproc.ProcessLine(item)
 		}
 	}
 
@@ -186,12 +205,7 @@ func ParseVerticalFileNoGoRo(conf *ParserConf, lproc LineProcessor) {
 
 	for rd.Scan() {
 		line := parseLine(rd.Text(), stack)
-		/*
-			fmt.Println("LINE: ", line)
-			fmt.Println("ROLL: ", stack.GetAttrs())
-			fmt.Println("----------------------")
-		*/
-		lproc.ProcessLine(line, stack)
+		lproc.ProcessLine(line)
 	}
 
 	fmt.Println("DONE: stack size: ", stack.Size())

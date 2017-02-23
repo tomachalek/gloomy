@@ -54,7 +54,7 @@ func (n *NgramExtractor) isIgnoreWord(w string) bool {
 }
 
 // ProcessLine processes a parsed vertical file line
-func (n *NgramExtractor) ProcessLine(vline *vertical.VerticalLine, stack *vertical.Stack) {
+func (n *NgramExtractor) ProcessLine(vline *vertical.Token) {
 	if vline != nil {
 		wordLC := vline.WordLC()
 		if n.isStopWord(wordLC) {
@@ -63,6 +63,7 @@ func (n *NgramExtractor) ProcessLine(vline *vertical.VerticalLine, stack *vertic
 		} else if !n.isIgnoreWord(wordLC) {
 			n.buffer.AddToken(wordLC)
 			if n.buffer.IsValid() {
+				//fmt.Println("ngram: ", n.buffer.GetValue(), vline.StructAttrs)
 				n.counter[wordLC]++
 			}
 		}

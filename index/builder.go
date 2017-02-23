@@ -26,11 +26,11 @@ import (
 type IndexBuilder struct {
 	outDir        string
 	baseIndexFile *os.File
-	prevItem      *vertical.VerticalLine
+	prevItem      *vertical.Token
 	uniqSuccNum   map[string]map[string]bool
 }
 
-func (b *IndexBuilder) ProcessLine(vline *vertical.VerticalLine, stack *vertical.Stack) {
+func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
 	if vline != nil {
 		//fmt.Println("LINE: ", vline)
 		if b.prevItem != nil {
