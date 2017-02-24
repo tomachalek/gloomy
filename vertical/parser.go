@@ -120,16 +120,17 @@ func parseAttrVal(src string) map[string]string {
 
 func parseLine(line string, elmStack *Stack) *Token {
 	var meta *VerticalMetaLine
-	rg := regexp.MustCompile("<([\\w]+)(\\s*[^>]*)|>")
-	srch := rg.FindStringSubmatch(line)
+	rg := regexp.MustCompile("^<([\\w]+)(\\s*[^>]*?|)/?>$")
 
 	switch {
 	case isOpenElement(line):
+		srch := rg.FindStringSubmatch(line)
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
 		elmStack.Push(meta)
 	case isCloseElement(line):
 		elmStack.Pop()
 	case isSelfCloseElement(line):
+		srch := rg.FindStringSubmatch(line)
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
 	default:
 		items := strings.Split(line, "\t")
