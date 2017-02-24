@@ -18,9 +18,9 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -28,6 +28,7 @@ import (
 
 const (
 	channelChunkSize = 30000 // please note that this affects the performance quite a lot
+	logProgressEach  = 1000000
 )
 
 // --------------------------------------------------------
@@ -173,6 +174,7 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 	chunk := make([]*Token, channelChunkSize)
 	go func() {
 		i := 0
+		progress := 0
 		for brd.Scan() {
 			line := parseLine(brd.Text(), stack)
 			chunk[i] = line
@@ -180,6 +182,10 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 			if i == channelChunkSize {
 				i = 0
 				ch <- chunk
+			}
+			progress++
+			if progress%logProgressEach == 0 {
+				log.Printf("...processed %d lines.\n", progress)
 			}
 		}
 		if i > 0 {
@@ -194,7 +200,7 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 		}
 	}
 
-	fmt.Println("DONE: stack size: ", stack.Size())
+	log.Println("DONE: stack size: ", stack.Size())
 }
 
 //ParseVerticalFileNoGoRo is just for benchmarking purposes
@@ -211,5 +217,5 @@ func ParseVerticalFileNoGoRo(conf *ParserConf, lproc LineProcessor) {
 		lproc.ProcessLine(line)
 	}
 
-	fmt.Println("DONE: stack size: ", stack.Size())
+	log.Println("DONE: stack size: ", stack.Size())
 }
