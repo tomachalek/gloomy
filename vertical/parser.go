@@ -96,17 +96,22 @@ type LineProcessor interface {
 
 // --------------------------------------------------------
 
+// this is quite simplified but it should work for our purposes
+func isElement(tagSrc string) bool {
+	return strings.HasPrefix(tagSrc, "<") && strings.HasSuffix(tagSrc, ">")
+}
+
 func isOpenElement(tagSrc string) bool {
-	return strings.HasPrefix(tagSrc, "<") && !strings.HasPrefix(tagSrc, "</") &&
+	return isElement(tagSrc) && !strings.HasPrefix(tagSrc, "</") &&
 		!strings.HasSuffix(tagSrc, "/>")
 }
 
 func isCloseElement(tagSrc string) bool {
-	return strings.HasPrefix(tagSrc, "</")
+	return isElement(tagSrc) && strings.HasPrefix(tagSrc, "</")
 }
 
 func isSelfCloseElement(tagSrc string) bool {
-	return strings.HasPrefix(tagSrc, "<") && strings.HasSuffix(tagSrc, "/>")
+	return isElement(tagSrc) && strings.HasSuffix(tagSrc, "/>")
 }
 
 func parseAttrVal(src string) map[string]string {
