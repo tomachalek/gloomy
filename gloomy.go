@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -40,7 +41,7 @@ func createIndex(conf *vertical.ParserConf) {
 		fmt.Println("Vertical file not specified")
 		os.Exit(1)
 	}
-	fmt.Println("Importing vertical file...", conf.VerticalFilePath)
+	log.Println("Importing vertical file ", conf.VerticalFilePath)
 	if conf.OutDirectory == "" {
 		conf.OutDirectory = filepath.Dir(conf.VerticalFilePath)
 	}
@@ -53,7 +54,7 @@ func extractNgrams(conf *vertical.ParserConf, ngramSize int) {
 		fmt.Println("Vertical file not specified")
 		os.Exit(1)
 	}
-	fmt.Println("Processing vertical file ", conf.VerticalFilePath)
+	log.Println("Processing vertical file ", conf.VerticalFilePath)
 	if conf.OutDirectory == "" {
 		conf.OutDirectory = filepath.Dir(conf.VerticalFilePath)
 	}
