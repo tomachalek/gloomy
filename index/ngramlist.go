@@ -33,6 +33,7 @@ type NgramNode struct {
 	left  *NgramNode
 	right *NgramNode
 	ngram []string
+	count int
 }
 
 type NgramList struct {
@@ -55,28 +56,31 @@ func (n *NgramList) DFSWalkthru(fn func(n *NgramNode)) {
 
 func (n *NgramList) Add(ngram []string) {
 	if n.root == nil {
-		n.root = &NgramNode{ngram: ngram}
+		n.root = &NgramNode{ngram: ngram, count: 1}
 
 	} else {
 		item := n.root
 		for item != nil {
-			if ngramsCmp(ngram, item.ngram) <= 0 {
+			switch ngramsCmp(ngram, item.ngram) {
+			case -1:
 				if item.left != nil {
 					item = item.left
 
 				} else {
-					item.left = &NgramNode{ngram: ngram}
-					break
+					item.left = &NgramNode{ngram: ngram, count: 1}
+					item = nil // stop the iteration
 				}
-
-			} else {
+			case 1:
 				if item.right != nil {
 					item = item.right
 
 				} else {
-					item.right = &NgramNode{ngram: ngram}
-					break
+					item.right = &NgramNode{ngram: ngram, count: 1}
+					item = nil // stop the iteration
 				}
+			case 0:
+				item.count++
+				item = nil // stop the iteration
 			}
 		}
 	}

@@ -16,10 +16,10 @@ package index
 
 import (
 	"bufio"
+	"fmt"
+	"github.com/tomachalek/gloomy/vertical"
 	"os"
 	"path/filepath"
-
-	"github.com/tomachalek/gloomy/vertical"
 	"strings"
 )
 
@@ -83,7 +83,7 @@ func saveNgrams(ngramList *NgramList, savePath string) error {
 	fw := bufio.NewWriter(f)
 	defer fw.Flush()
 	ngramList.DFSWalkthru(func(item *NgramNode) {
-		fw.WriteString(strings.Join(item.ngram, " ") + "\n")
+		fw.WriteString(fmt.Sprintf("%s %d\n", strings.Join(item.ngram, " "), item.count))
 	})
 	return nil
 }
