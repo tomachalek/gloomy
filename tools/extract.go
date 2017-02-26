@@ -28,7 +28,6 @@ import (
 type NgramExtractor struct {
 	ngramSize   int
 	buffer      *vertical.NgramBuffer
-	buffPos     int
 	stopWords   []string
 	ignoreWords []string
 	counter     map[string]int
@@ -96,7 +95,6 @@ func ExtractNgrams(conf *vertical.ParserConf, ngramSize int) {
 	extractor := &NgramExtractor{
 		ngramSize:   ngramSize,
 		buffer:      vertical.NewNgramBuffer(ngramSize),
-		buffPos:     0,
 		stopWords:   conf.NgramStopStrings,
 		ignoreWords: conf.NgramIgnoreStrings,
 		counter:     make(map[string]int),

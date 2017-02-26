@@ -36,7 +36,7 @@ func help() {
 	fmt.Println("HELP:")
 }
 
-func createIndex(conf *vertical.ParserConf) {
+func createIndex(conf *vertical.ParserConf, ngramSize int) {
 	if conf.VerticalFilePath == "" {
 		fmt.Println("Vertical file not specified")
 		os.Exit(1)
@@ -46,7 +46,9 @@ func createIndex(conf *vertical.ParserConf) {
 		conf.OutDirectory = filepath.Dir(conf.VerticalFilePath)
 	}
 	fmt.Println("Output directory: ", conf.OutDirectory)
-	index.CreateGloomyIndex(conf)
+	t0 := time.Now()
+	index.CreateGloomyIndex(conf, ngramSize)
+	fmt.Printf("DONE in %s\n", time.Since(t0))
 }
 
 func extractNgrams(conf *vertical.ParserConf, ngramSize int) {
@@ -77,7 +79,7 @@ func main() {
 			help()
 		case createIndexAction:
 			conf := vertical.LoadConfig(flag.Arg(1))
-			createIndex(conf)
+			createIndex(conf, *ngramSize)
 		case extractNgramsAction:
 			conf := vertical.LoadConfig(flag.Arg(1))
 			extractNgrams(conf, *ngramSize)
