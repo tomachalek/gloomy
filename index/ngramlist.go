@@ -30,66 +30,55 @@ func ngramsCmp(n1 []string, n2 []string) int {
 }
 
 type NgramNode struct {
-	next  *NgramNode
+	left  *NgramNode
+	right *NgramNode
 	ngram []string
 }
 
-type SortedNgramList struct {
-	firstNode *NgramNode
+type NgramList struct {
+	root *NgramNode
 }
 
-func (n *SortedNgramList) IndexOf(ngram []string) int {
-	item := n.firstNode
-	idx := 0
-	for item != nil {
-		if ngramsCmp(ngram, item.ngram) == 0 {
-			return idx
-		}
-		item = item.next
+func dfsWalkthruRecursive(node *NgramNode, fn func(n *NgramNode)) {
+	if node.left != nil {
+		dfsWalkthruRecursive(node.left, fn)
 	}
-	return -1
+	fn(node)
+	if node.right != nil {
+		dfsWalkthruRecursive(node.right, fn)
+	}
 }
 
-func (n *SortedNgramList) Get(index int) *NgramNode {
-	item := n.firstNode
-	for i := 0; item != nil && i <= index; i++ {
-		item = item.next
-	}
-	return item
+func (n *NgramList) DFSWalkthru(fn func(n *NgramNode)) {
+	dfsWalkthruRecursive(n.root, fn)
 }
 
-func (n *SortedNgramList) GetRange(index1 int, index2 int) [][]string {
-	first := n.Get(index1)
-	if index1 >= index2 || first == nil {
-		return [][]string{}
-	}
-	ans := make([][]string, index2-index1)
-	item := first
-	for i := 0; i < index2-index1; i, item = i+1, item.next {
-		if item != nil {
-			ans[i] = item.ngram
-
-		} else {
-			return ans[:i]
-		}
-	}
-	return ans
-}
-
-func (n *SortedNgramList) Add(ngram []string) {
-	item := n.firstNode
-
-	if item == nil {
-		n.firstNode = &NgramNode{ngram: ngram}
-
-	} else if ngramsCmp(ngram, item.ngram) == -1 {
-		n.firstNode = &NgramNode{ngram: ngram, next: item}
+func (n *NgramList) Add(ngram []string) {
+	if n.root == nil {
+		n.root = &NgramNode{ngram: ngram}
 
 	} else {
-		for item.next != nil && ngramsCmp(ngram, item.ngram) <= 0 {
-			item = item.next
+		item := n.root
+		for item != nil {
+			if ngramsCmp(ngram, item.ngram) <= 0 {
+				if item.left != nil {
+					item = item.left
+
+				} else {
+					item.left = &NgramNode{ngram: ngram}
+					break
+				}
+
+			} else {
+				if item.right != nil {
+					item = item.right
+
+				} else {
+					item.right = &NgramNode{ngram: ngram}
+					break
+				}
+			}
 		}
-		newNode := &NgramNode{ngram: ngram, next: item.next}
-		item.next = newNode
 	}
+
 }

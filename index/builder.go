@@ -15,46 +15,80 @@
 package index
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/tomachalek/gloomy/vertical"
-	"github.com/tomachalek/gloomy/wstore"
+	"strings"
 )
 
 type IndexBuilder struct {
 	outDir        string
 	baseIndexFile *os.File
 	prevItem      *vertical.Token
-	uniqSuccNum   map[string]map[string]bool
+	ngramSize     int
+	ngramList     *NgramList
+	stopWords     []string
+	ignoreWords   []string
+	buffer        *vertical.NgramBuffer
+}
+
+func (b *IndexBuilder) isStopWord(w string) bool {
+	for _, w2 := range b.stopWords {
+		if w == w2 {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *IndexBuilder) isIgnoreWord(w string) bool {
+	for _, w2 := range b.ignoreWords {
+		if w == w2 {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
 	if vline != nil {
-		//fmt.Println("LINE: ", vline)
-		if b.prevItem != nil {
-			if b.uniqSuccNum[b.prevItem.WordLC()] == nil {
-				b.uniqSuccNum[b.prevItem.WordLC()] = make(map[string]bool)
+		wordLC := vline.WordLC()
+		if b.isStopWord(wordLC) {
+			b.buffer.Reset()
+
+		} else if !b.isIgnoreWord(wordLC) {
+			b.buffer.AddToken(wordLC)
+			if b.buffer.IsValid() {
+				b.ngramList.Add(b.buffer.GetValue())
 			}
-			b.uniqSuccNum[b.prevItem.WordLC()][vline.WordLC()] = true
 		}
-		b.prevItem = vline
+
+	} else { // parser encoutered a structure
+		b.buffer.Reset()
 	}
 }
 
-func createWord2IntDict(data map[string]map[string]bool, outPath string) error {
-	index := make([]string, len(data))
-	i := 0
-	for k := range data {
-		index[i] = k
-		i++
-	}
-	sort.Strings(index)
-	return wstore.SaveWordDict(index, outPath)
+func createWord2IntDict(ngramList *NgramList, outPath string) error {
+	// TODO
+	return nil
 }
 
-func CreateGloomyIndex(conf *vertical.ParserConf) {
+func saveNgrams(ngramList *NgramList, savePath string) error {
+	f, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	fw := bufio.NewWriter(f)
+	defer fw.Flush()
+	ngramList.DFSWalkthru(func(item *NgramNode) {
+		fw.WriteString(strings.Join(item.ngram, " ") + "\n")
+	})
+	return nil
+}
+
+func CreateGloomyIndex(conf *vertical.ParserConf, ngramSize int) {
 	baseIndexPath := filepath.Join(conf.OutDirectory, "baseindex.glm")
 	outFile, err := os.OpenFile(baseIndexPath, os.O_CREATE, 0)
 	if err != nil {
@@ -63,10 +97,14 @@ func CreateGloomyIndex(conf *vertical.ParserConf) {
 	builder := &IndexBuilder{
 		outDir:        conf.OutDirectory,
 		baseIndexFile: outFile,
-		uniqSuccNum:   make(map[string]map[string]bool),
+		ngramList:     &NgramList{},
+		ngramSize:     ngramSize,
+		buffer:        vertical.NewNgramBuffer(ngramSize),
+		stopWords:     conf.NgramStopStrings,
+		ignoreWords:   conf.NgramIgnoreStrings,
 	}
 	vertical.ParseVerticalFile(conf, builder)
 
-	wIndexPath := filepath.Join(conf.OutDirectory, "wordindex.glm")
-	createWord2IntDict(builder.uniqSuccNum, wIndexPath)
+	wIndexPath := filepath.Join(conf.OutDirectory, "tmp_ngrams.glm")
+	saveNgrams(builder.ngramList, wIndexPath)
 }

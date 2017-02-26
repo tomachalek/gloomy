@@ -15,71 +15,56 @@
 package index
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestNgramsCmp(t *testing.T) {
 	ans := ngramsCmp([]string{"foo", "bar", "baz"}, []string{"foo", "bar", "baz"})
-	if ans != 0 {
-		t.Errorf("Failed - expected 0, found %d", ans)
-	}
+	assert.Equal(t, 0, ans)
 }
 
 func TestNgramsCmpFirstBigger(t *testing.T) {
 	ans := ngramsCmp([]string{"zzz", "bar", "baz"}, []string{"foo", "bar", "baz"})
-	if ans != 1 {
-		t.Errorf("Failed - expected 1, found %d", ans)
-	}
+	assert.Equal(t, 1, ans)
 }
 
 func TestNgramsCmpFirstBigger2(t *testing.T) {
 	ans := ngramsCmp([]string{"foo", "bar", "baz"}, []string{"foo", "bar", "bay"})
-	if ans != 1 {
-		t.Errorf("Failed - expected 1, found %d", ans)
-	}
+	assert.Equal(t, 1, ans)
 }
 
 func TestNgramsCmpFirstSmaller(t *testing.T) {
 	ans := ngramsCmp([]string{"eon", "bar", "baz"}, []string{"foo", "bar", "baz"})
-	if ans != -1 {
-		t.Errorf("Failed - expected -1, found %d", ans)
-	}
+	assert.Equal(t, -1, ans)
 }
 
 func TestEmptyNgramsCmp(t *testing.T) {
 	ans := ngramsCmp([]string{}, []string{})
-	if ans != 0 {
-		t.Errorf("Failed - expected 0, found %d", ans)
-	}
+	assert.Equal(t, 0, ans)
 }
 
 // --------
 
 func TestNgramListAdd(t *testing.T) {
-	nl := SortedNgramList{}
+	nl := NgramList{}
 	v := []string{"foo", "bar"}
 	nl.Add(v)
-	if ngramsCmp(nl.firstNode.ngram, v) != 0 {
-		t.Errorf("Failed - expected first ngram to be %s, found: %s", v, nl.firstNode.ngram)
-	}
+	assert.Equal(t, 0, ngramsCmp(nl.root.ngram, v))
 }
 
 func TestNgramListAddMulti(t *testing.T) {
-	n := SortedNgramList{}
+	n := NgramList{}
 	v1 := []string{"foo", "bar"}
 	n.Add(v1)
 	v2 := []string{"boo", "bar"}
 	n.Add(v2)
-	v3 := []string{"eon", "bar"}
+	v3 := []string{"moo", "bar"}
 	n.Add(v3)
+	v4 := []string{"zoo", "bar"}
 
-	if ngramsCmp(n.firstNode.ngram, v2) != 0 {
-		t.Errorf("Failed - expected first ngram to be %s, found: %s", v2, n.firstNode.ngram)
-	}
-	if ngramsCmp(n.firstNode.next.ngram, v3) != 0 {
-		t.Errorf("Failed - expected second ngram to be %s, found: %s", v3, n.firstNode.next.ngram)
-	}
-	if ngramsCmp(n.firstNode.next.next.ngram, v1) != 0 {
-		t.Errorf("Failed - expected second ngram to be %s, found: %s", v1, n.firstNode.next.next.ngram)
-	}
+	assert.Equal(t, v1, n.root.ngram[0])
+	assert.Equal(t, v2, n.root.left.ngram[0])
+	assert.Equal(t, v3, n.root.right.ngram[0])
+	assert.Equal(t, v4, n.root.right.right.ngram[0])
 }
