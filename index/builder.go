@@ -30,11 +30,9 @@ type IndexBuilder struct {
 	// index "word -> index"
 	baseIndexFile *os.File
 
-	// indices for n-gram positions 2, 3, 4
+  // indices for n-gram positions 2, 3, 4
 	// [number -> number]
 	posIndices []*os.File
-
-	prevItem *vertical.Token
 
 	ngramSize int
 
@@ -45,6 +43,7 @@ type IndexBuilder struct {
 	ignoreWords []string
 
 	buffer *vertical.NgramBuffer
+
 }
 
 func (b *IndexBuilder) isStopWord(w string) bool {
