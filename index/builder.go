@@ -17,10 +17,11 @@ package index
 import (
 	"bufio"
 	"fmt"
-	"github.com/tomachalek/gloomy/vertical"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tomachalek/gloomy/vertical"
 )
 
 type IndexBuilder struct {
@@ -76,7 +77,7 @@ func createWord2IntDict(ngramList *NgramList, outPath string) error {
 }
 
 func saveNgrams(ngramList *NgramList, savePath string) error {
-	f, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
@@ -90,7 +91,7 @@ func saveNgrams(ngramList *NgramList, savePath string) error {
 
 func CreateGloomyIndex(conf *vertical.ParserConf, ngramSize int) {
 	baseIndexPath := filepath.Join(conf.OutDirectory, "baseindex.glm")
-	outFile, err := os.OpenFile(baseIndexPath, os.O_CREATE, 0)
+	outFile, err := os.OpenFile(baseIndexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		panic(err)
 	}
