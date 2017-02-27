@@ -18,20 +18,32 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
+	"github.com/tomachalek/gloomy/index/files"
 	"github.com/tomachalek/gloomy/vertical"
 )
 
 type IndexBuilder struct {
-	outDir        string
+	outDir string
+
+	// index "word -> index"
 	baseIndexFile *os.File
-	ngramSize     int
-	ngramList     *NgramList
-	stopWords     []string
-	ignoreWords   []string
-	buffer        *vertical.NgramBuffer
+
+  // indices for n-gram positions 2, 3, 4
+	// [number -> number]
+	posIndices []*os.File
+
+	ngramSize int
+
+	ngramList *NgramList
+
+	stopWords []string
+
+	ignoreWords []string
+
+	buffer *vertical.NgramBuffer
+
 }
 
 func (b *IndexBuilder) isStopWord(w string) bool {
@@ -70,17 +82,10 @@ func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
 	}
 }
 
-func createWord2IntDict(ngramList *NgramList, outPath string) error {
-	// TODO
-	return nil
-}
+// ---------------------------------------------
 
-func saveNgrams(ngramList *NgramList, savePath string) error {
-	f, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	fw := bufio.NewWriter(f)
+func saveNgrams(ngramList *NgramList, saveFile *os.File) error {
+	fw := bufio.NewWriter(saveFile)
 	defer fw.Flush()
 	ngramList.DFSWalkthru(func(item *NgramNode) {
 		fw.WriteString(fmt.Sprintf("%s %d\n", strings.Join(item.ngram, " "), item.count))
@@ -89,14 +94,14 @@ func saveNgrams(ngramList *NgramList, savePath string) error {
 }
 
 func CreateGloomyIndex(conf *vertical.ParserConf, ngramSize int) {
-	baseIndexPath := filepath.Join(conf.OutDirectory, "baseindex.glm")
-	outFile, err := os.OpenFile(baseIndexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	outputFiles := files.NewOutputFiles(conf, ngramSize, 0644, 0755)
+	baseIndexFile, err := outputFiles.OpenIndexForPosition(0, os.O_CREATE|os.O_TRUNC|os.O_WRONLY)
 	if err != nil {
 		panic(err)
 	}
 	builder := &IndexBuilder{
-		outDir:        conf.OutDirectory,
-		baseIndexFile: outFile,
+		outDir:        outputFiles.GetIndexDir(),
+		baseIndexFile: baseIndexFile,
 		ngramList:     &NgramList{},
 		ngramSize:     ngramSize,
 		buffer:        vertical.NewNgramBuffer(ngramSize),
@@ -104,7 +109,9 @@ func CreateGloomyIndex(conf *vertical.ParserConf, ngramSize int) {
 		ignoreWords:   conf.NgramIgnoreStrings,
 	}
 	vertical.ParseVerticalFile(conf, builder)
-
-	wIndexPath := filepath.Join(conf.OutDirectory, "tmp_ngrams.glm")
-	saveNgrams(builder.ngramList, wIndexPath)
+	sortedIndexTmp, err := outputFiles.GetSortedIndexTmpPath(os.O_CREATE | os.O_TRUNC | os.O_WRONLY)
+	if err != nil {
+		panic(err)
+	}
+	saveNgrams(builder.ngramList, sortedIndexTmp)
 }
