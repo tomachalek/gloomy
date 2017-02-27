@@ -15,8 +15,9 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNgramsCmp(t *testing.T) {
@@ -62,9 +63,10 @@ func TestNgramListAddMulti(t *testing.T) {
 	v3 := []string{"moo", "bar"}
 	n.Add(v3)
 	v4 := []string{"zoo", "bar"}
+	n.Add(v4)
 
-	assert.Equal(t, v1, n.root.ngram[0])
-	assert.Equal(t, v2, n.root.left.ngram[0])
-	assert.Equal(t, v3, n.root.right.ngram[0])
-	assert.Equal(t, v4, n.root.right.right.ngram[0])
+	assert.Equal(t, v1[0], n.root.ngram[0])
+	assert.Equal(t, v2[0], n.root.left.ngram[0])
+	assert.Equal(t, v3[0], n.root.right.ngram[0])
+	assert.Equal(t, v4[0], n.root.right.right.ngram[0])
 }
