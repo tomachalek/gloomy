@@ -149,6 +149,15 @@ func parseLine(line string, elmStack *Stack) *Token {
 	return nil
 }
 
+func tokenMatchesFilter(token *Token, filter map[string]string) bool {
+	for k, v := range filter {
+		if v != token.StructAttrs[k] {
+			return false
+		}
+	}
+	return true
+}
+
 // ParseVerticalFile processes a corpus vertical file
 // line by line and applies a custom LineProcessor on
 // them. The processing is parallelized in the sense
@@ -200,9 +209,11 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 		close(ch)
 	}()
 
-	for items := range ch {
-		for _, item := range items {
-			lproc.ProcessLine(item)
+	for tokens := range ch {
+		for _, token := range tokens {
+			if token == nil || tokenMatchesFilter(token, conf.FilterArgs) {
+				lproc.ProcessLine(token)
+			}
 		}
 	}
 
