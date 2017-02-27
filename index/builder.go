@@ -27,7 +27,6 @@ import (
 type IndexBuilder struct {
 	outDir        string
 	baseIndexFile *os.File
-	prevItem      *vertical.Token
 	ngramSize     int
 	ngramList     *NgramList
 	stopWords     []string
