@@ -40,7 +40,7 @@ type ParserConf struct {
 	// Source vertical file (either a plain text file or a gzip one)
 	VerticalFilePath string `json:"verticalFilePath"`
 
-	FilterArgs map[string]string `json:"filterArgs"`
+	FilterArgs [][][]string `json:"filterArgs"`
 
 	NgramIgnoreStructs []string `json:"ngramIgnoreStructs"`
 
@@ -149,9 +149,17 @@ func parseLine(line string, elmStack *Stack) *Token {
 	return nil
 }
 
-func tokenMatchesFilter(token *Token, filter map[string]string) bool {
-	for k, v := range filter {
-		if v != token.StructAttrs[k] {
+func tokenMatchesFilter(token *Token, filterCNF [][][]string) bool {
+	var sub bool
+	for _, item := range filterCNF {
+		sub = false
+		for _, v := range item {
+			if v[1] == token.StructAttrs[v[0]] {
+				sub = true
+				break
+			}
+		}
+		if sub == false {
 			return false
 		}
 	}
