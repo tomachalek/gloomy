@@ -51,7 +51,9 @@ func dfsWalkthruRecursive(node *NgramNode, fn func(n *NgramNode)) {
 }
 
 func (n *NgramList) DFSWalkthru(fn func(n *NgramNode)) {
-	dfsWalkthruRecursive(n.root, fn)
+	if n.root != nil {
+		dfsWalkthruRecursive(n.root, fn)
+	}
 }
 
 func (n *NgramList) Add(ngram []string) {
