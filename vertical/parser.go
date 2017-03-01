@@ -27,8 +27,13 @@ import (
 )
 
 const (
-	channelChunkSize = 30000 // please note that this affects the performance quite a lot
+	channelChunkSize = 250000 // changing the value affects performance (10k...300k ~ 15%)
 	logProgressEach  = 1000000
+)
+
+var (
+	tagSrchRegexp = regexp.MustCompile("^<([\\w]+)(\\s*[^>]*?|)/?>$")
+	attrValRegexp = regexp.MustCompile("(\\w+)=\"([^\"]+)\"")
 )
 
 // --------------------------------------------------------
@@ -116,8 +121,7 @@ func isSelfCloseElement(tagSrc string) bool {
 
 func parseAttrVal(src string) map[string]string {
 	ans := make(map[string]string)
-	rg := regexp.MustCompile("(\\w+)=\"([^\"]+)\"")
-	srch := rg.FindAllStringSubmatch(src, -1)
+	srch := attrValRegexp.FindAllStringSubmatch(src, -1)
 	for i := 0; i < len(srch); i++ {
 		ans[srch[i][1]] = srch[i][2]
 	}
@@ -126,17 +130,15 @@ func parseAttrVal(src string) map[string]string {
 
 func parseLine(line string, elmStack *Stack) *Token {
 	var meta *VerticalMetaLine
-	rg := regexp.MustCompile("^<([\\w]+)(\\s*[^>]*?|)/?>$")
-
 	switch {
 	case isOpenElement(line):
-		srch := rg.FindStringSubmatch(line)
+		srch := tagSrchRegexp.FindStringSubmatch(line)
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
 		elmStack.Push(meta)
 	case isCloseElement(line):
 		elmStack.Pop()
 	case isSelfCloseElement(line):
-		srch := rg.FindStringSubmatch(line)
+		srch := tagSrchRegexp.FindStringSubmatch(line)
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
 	default:
 		items := strings.Split(line, "\t")
