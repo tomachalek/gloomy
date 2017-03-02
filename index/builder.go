@@ -17,10 +17,11 @@ package index
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
-	"github.com/tomachalek/gloomy/index/files"
+	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/vertical"
 )
 
@@ -30,7 +31,7 @@ type IndexBuilder struct {
 	// index "word -> index"
 	baseIndexFile *os.File
 
-  // indices for n-gram positions 2, 3, 4
+	// indices for n-gram positions 2, 3, 4
 	// [number -> number]
 	posIndices []*os.File
 
@@ -43,7 +44,6 @@ type IndexBuilder struct {
 	ignoreWords []string
 
 	buffer *vertical.NgramBuffer
-
 }
 
 func (b *IndexBuilder) isStopWord(w string) bool {
@@ -93,8 +93,8 @@ func saveNgrams(ngramList *NgramList, saveFile *os.File) error {
 	return nil
 }
 
-func CreateGloomyIndex(conf *vertical.ParserConf, ngramSize int) {
-	outputFiles := files.NewOutputFiles(conf, ngramSize, 0644, 0755)
+func CreateGloomyIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
+	outputFiles := gconf.NewOutputFiles(conf, ngramSize, 0644, 0755)
 	baseIndexFile, err := outputFiles.OpenIndexForPosition(0, os.O_CREATE|os.O_TRUNC|os.O_WRONLY)
 	if err != nil {
 		panic(err)
@@ -108,10 +108,11 @@ func CreateGloomyIndex(conf *vertical.ParserConf, ngramSize int) {
 		stopWords:     conf.NgramStopStrings,
 		ignoreWords:   conf.NgramIgnoreStrings,
 	}
-	vertical.ParseVerticalFile(conf, builder)
+	vertical.ParseVerticalFile(conf.GetParserConf(), builder)
 	sortedIndexTmp, err := outputFiles.GetSortedIndexTmpPath(os.O_CREATE | os.O_TRUNC | os.O_WRONLY)
 	if err != nil {
 		panic(err)
 	}
 	saveNgrams(builder.ngramList, sortedIndexTmp)
+	log.Printf("Saved raw n-gram file %s", sortedIndexTmp.Name())
 }
