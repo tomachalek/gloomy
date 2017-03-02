@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/tomachalek/gloomy/index"
+	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/tools"
-	"github.com/tomachalek/gloomy/vertical"
 )
 
 const (
@@ -36,7 +36,7 @@ func help() {
 	fmt.Println("HELP:")
 }
 
-func createIndex(conf *vertical.ParserConf, ngramSize int) {
+func createIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
 	if conf.VerticalFilePath == "" {
 		fmt.Println("Vertical file not specified")
 		os.Exit(1)
@@ -51,7 +51,7 @@ func createIndex(conf *vertical.ParserConf, ngramSize int) {
 	fmt.Printf("DONE in %s\n", time.Since(t0))
 }
 
-func extractNgrams(conf *vertical.ParserConf, ngramSize int) {
+func extractNgrams(conf *gconf.IndexBuilderConf, ngramSize int) {
 	if conf.VerticalFilePath == "" {
 		fmt.Println("Vertical file not specified")
 		os.Exit(1)
@@ -78,10 +78,10 @@ func main() {
 		case "help":
 			help()
 		case createIndexAction:
-			conf := vertical.LoadConfig(flag.Arg(1))
+			conf := gconf.LoadIndexBuilderConf(flag.Arg(1))
 			createIndex(conf, *ngramSize)
 		case extractNgramsAction:
-			conf := vertical.LoadConfig(flag.Arg(1))
+			conf := gconf.LoadIndexBuilderConf(flag.Arg(1))
 			extractNgrams(conf, *ngramSize)
 		default:
 			panic("Unknown action")

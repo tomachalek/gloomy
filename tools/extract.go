@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/vertical"
 )
 
@@ -89,7 +90,7 @@ func (n *NgramExtractor) ProcessLine(vline *vertical.Token) {
 // -----------------------------------------------------------
 
 // ExtractNgrams runs the n-gram extraction process
-func ExtractNgrams(conf *vertical.ParserConf, ngramSize int) {
+func ExtractNgrams(conf *gconf.IndexBuilderConf, ngramSize int) {
 	baseIndexPath := filepath.Join(conf.OutDirectory,
 		fmt.Sprintf("ngrams-%s", filepath.Base(conf.VerticalFilePath)))
 	extractor := &NgramExtractor{
@@ -99,6 +100,6 @@ func ExtractNgrams(conf *vertical.ParserConf, ngramSize int) {
 		ignoreWords: conf.NgramIgnoreStrings,
 		counter:     make(map[string]int),
 	}
-	vertical.ParseVerticalFile(conf, extractor)
+	vertical.ParseVerticalFile(conf.GetParserConf(), extractor)
 	extractor.SaveNgrams(baseIndexPath)
 }

@@ -49,8 +49,6 @@ type ParserConf struct {
 
 	NgramIgnoreStructs []string `json:"ngramIgnoreStructs"`
 
-	OutDirectory string `json:"outDirectory"`
-
 	NgramStopStrings []string `json:"ngramStopStrings"`
 
 	NgramIgnoreStrings []string `json:"ngramIgnoreStrings"`
@@ -227,7 +225,7 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 		}
 	}
 
-	log.Println("DONE: stack size: ", stack.Size())
+	log.Println("Parsing done. Metadata stack size: ", stack.Size())
 }
 
 //ParseVerticalFileNoGoRo is just for benchmarking purposes
@@ -244,5 +242,5 @@ func ParseVerticalFileNoGoRo(conf *ParserConf, lproc LineProcessor) {
 		lproc.ProcessLine(line)
 	}
 
-	log.Println("DONE: stack size: ", stack.Size())
+	log.Println("Parsing done. Metadata stack size: ", stack.Size())
 }

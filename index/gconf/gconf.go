@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package files
+package gconf
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,8 +33,40 @@ func stripSuffix(filePath string) string {
 	return filePath
 }
 
+// ---------------------------------------------------------
+
+type IndexBuilderConf struct {
+	OutDirectory string `json:"outDirectory"`
+	vertical.ParserConf
+}
+
+func (i *IndexBuilderConf) GetParserConf() *vertical.ParserConf {
+	return &vertical.ParserConf{
+		VerticalFilePath:   i.VerticalFilePath,
+		FilterArgs:         i.FilterArgs,
+		NgramIgnoreStructs: i.NgramIgnoreStructs,
+		NgramStopStrings:   i.NgramStopStrings,
+		NgramIgnoreStrings: i.NgramIgnoreStrings,
+	}
+}
+
+func LoadIndexBuilderConf(confPath string) *IndexBuilderConf {
+	rawData, err := ioutil.ReadFile(confPath)
+	if err != nil {
+		panic(err)
+	}
+	var conf IndexBuilderConf
+	err = json.Unmarshal(rawData, &conf)
+	if err != nil {
+		panic(err)
+	}
+	return &conf
+}
+
+// ---------------------------------------------------------
+
 type OutputFiles struct {
-	conf      *vertical.ParserConf
+	conf      *IndexBuilderConf
 	indexDir  string
 	filePerm  os.FileMode
 	dirPerm   os.FileMode
@@ -55,7 +89,7 @@ func (o *OutputFiles) GetIndexDir() string {
 	return o.indexDir
 }
 
-func NewOutputFiles(conf *vertical.ParserConf, ngramSize int, filePerm os.FileMode, dirPerm os.FileMode) *OutputFiles {
+func NewOutputFiles(conf *IndexBuilderConf, ngramSize int, filePerm os.FileMode, dirPerm os.FileMode) *OutputFiles {
 	inFilenamePrefix := stripSuffix(filepath.Base(conf.VerticalFilePath))
 	outDir := filepath.Join(conf.OutDirectory, inFilenamePrefix)
 	err := os.MkdirAll(outDir, dirPerm)
