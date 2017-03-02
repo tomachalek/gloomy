@@ -84,11 +84,13 @@ func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
 
 // ---------------------------------------------
 
-func saveNgrams(ngramList *NgramList, saveFile *os.File) error {
+func saveNgrams(ngramList *NgramList, minFreq int, saveFile *os.File) error {
 	fw := bufio.NewWriter(saveFile)
 	defer fw.Flush()
 	ngramList.DFSWalkthru(func(item *NgramNode) {
-		fw.WriteString(fmt.Sprintf("%s %d\n", strings.Join(item.ngram, " "), item.count))
+		if item.count >= minFreq {
+			fw.WriteString(fmt.Sprintf("%s %d\n", strings.Join(item.ngram, " "), item.count))
+		}
 	})
 	return nil
 }
@@ -113,6 +115,6 @@ func CreateGloomyIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
 	if err != nil {
 		panic(err)
 	}
-	saveNgrams(builder.ngramList, sortedIndexTmp)
+	saveNgrams(builder.ngramList, conf.MinNgramFreq, sortedIndexTmp)
 	log.Printf("Saved raw n-gram file %s", sortedIndexTmp.Name())
 }

@@ -4,5 +4,6 @@
   "ngramIgnoreStructs": [],
   "ngramStopStrings": [".", ":"],
   "ngramIgnoreStrings": ["\"", ","],
-  "outDirectory": "/home/tomas/work/data/ngramy/syn_v4"
+  "outDirectory": "/home/tomas/work/data/ngramy/syn_v4",
+  "minNgramFreq": 4
 }
