@@ -37,6 +37,7 @@ func stripSuffix(filePath string) string {
 
 type IndexBuilderConf struct {
 	OutDirectory string `json:"outDirectory"`
+	MinNgramFreq int    `json:"minNgramFreq"`
 	vertical.ParserConf
 }
 
