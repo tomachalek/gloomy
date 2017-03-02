@@ -89,7 +89,7 @@ func saveNgrams(ngramList *NgramList, minFreq int, saveFile *os.File) error {
 	defer fw.Flush()
 	ngramList.DFSWalkthru(func(item *NgramNode) {
 		if item.count >= minFreq {
-			fw.WriteString(fmt.Sprintf("%s %d\n", strings.Join(item.ngram, " "), item.count))
+			fw.WriteString(fmt.Sprintf("%s\t%d\n", strings.Join(item.ngram, "\t"), item.count))
 		}
 	})
 	return nil
