@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package index
+package builder
 
 func ngramsCmp(n1 []string, n2 []string) int {
 	if len(n1) != len(n2) {
