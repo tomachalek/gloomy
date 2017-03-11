@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tomachalek/gloomy/index"
+	"github.com/tomachalek/gloomy/index/builder"
+	"github.com/tomachalek/gloomy/index/extras"
 	"github.com/tomachalek/gloomy/index/gconf"
-	"github.com/tomachalek/gloomy/tools"
 )
 
 const (
@@ -47,7 +47,7 @@ func createIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
 	}
 	fmt.Println("Output directory: ", conf.OutDirectory)
 	t0 := time.Now()
-	index.CreateGloomyIndex(conf, ngramSize)
+	builder.CreateGloomyIndex(conf, ngramSize)
 	fmt.Printf("DONE in %s\n", time.Since(t0))
 }
 
@@ -62,7 +62,7 @@ func extractNgrams(conf *gconf.IndexBuilderConf, ngramSize int) {
 	}
 	fmt.Println("Output directory: ", conf.OutDirectory)
 	t0 := time.Now()
-	tools.ExtractNgrams(conf, ngramSize)
+	extras.ExtractUniqueNgrams(conf, ngramSize)
 	fmt.Printf("DONE in %s\n", time.Since(t0))
 }
 
