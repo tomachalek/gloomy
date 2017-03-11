@@ -16,17 +16,16 @@ package builder
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
-	"log"
-	"os"
-	"strings"
-
 	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/vertical"
+	"log"
+	"os"
 )
 
 type IndexBuilder struct {
-	outDir string
+	outputFiles *gconf.OutputFiles
 
 	// index "word -> index"
 	baseIndexFile *os.File
@@ -37,6 +36,8 @@ type IndexBuilder struct {
 
 	ngramSize int
 
+	minNgramFreq int
+
 	ngramList *NgramList
 
 	stopWords []string
@@ -44,6 +45,16 @@ type IndexBuilder struct {
 	ignoreWords []string
 
 	buffer *vertical.NgramBuffer
+
+	wordDict *WordDict
+}
+
+func (b *IndexBuilder) GetOutputFiles() *gconf.OutputFiles {
+	return b.outputFiles
+}
+
+func (b *IndexBuilder) GetNgramList() *NgramList {
+	return b.ngramList
 }
 
 func (b *IndexBuilder) isStopWord(w string) bool {
@@ -72,6 +83,7 @@ func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
 
 		} else if !b.isIgnoreWord(wordLC) {
 			b.buffer.AddToken(wordLC)
+			b.wordDict.AddToken(wordLC)
 			if b.buffer.IsValid() {
 				b.ngramList.Add(b.buffer.GetValue())
 			}
@@ -82,39 +94,58 @@ func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
 	}
 }
 
-// ---------------------------------------------
+func (b *IndexBuilder) CreateIndices() {
+	counters := make([][]int, b.ngramSize-1)
+	b.ngramList.DFSWalkthru(func(item *NgramNode) {
+		if item.count >= b.minNgramFreq {
+			for i := range counters {
+				fmt.Println(i) // TODO
+			}
+		}
+	})
+}
 
-func saveNgrams(ngramList *NgramList, minFreq int, saveFile *os.File) error {
+func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuilder {
+	outputFiles := gconf.NewOutputFiles(conf, ngramSize, 0644, 0755)
+	baseIndexFile, err := outputFiles.OpenIndexForPosition(0, os.O_CREATE|os.O_TRUNC|os.O_WRONLY)
+	if err != nil {
+		panic(err)
+	}
+	return &IndexBuilder{
+		outputFiles:   outputFiles,
+		baseIndexFile: baseIndexFile,
+		ngramList:     &NgramList{},
+		minNgramFreq:  conf.MinNgramFreq,
+		ngramSize:     ngramSize,
+		buffer:        vertical.NewNgramBuffer(ngramSize),
+		stopWords:     conf.NgramStopStrings,
+		ignoreWords:   conf.NgramIgnoreStrings,
+		wordDict:      NewWordDict(),
+	}
+}
+
+func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) error {
 	fw := bufio.NewWriter(saveFile)
 	defer fw.Flush()
-	ngramList.DFSWalkthru(func(item *NgramNode) {
+	builder.ngramList.DFSWalkthru(func(item *NgramNode) {
 		if item.count >= minFreq {
-			fw.WriteString(fmt.Sprintf("%s\t%d\n", strings.Join(item.ngram, "\t"), item.count))
+			for _, w := range item.ngram {
+				binary.Write(fw, binary.LittleEndian, builder.wordDict.GetTokenIndex(w))
+			}
+			//(fmt.Sprintf("%s\t%d\n", strings.Join(item.ngram, "\t"), item.count))
 		}
 	})
 	return nil
 }
 
 func CreateGloomyIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
-	outputFiles := gconf.NewOutputFiles(conf, ngramSize, 0644, 0755)
-	baseIndexFile, err := outputFiles.OpenIndexForPosition(0, os.O_CREATE|os.O_TRUNC|os.O_WRONLY)
-	if err != nil {
-		panic(err)
-	}
-	builder := &IndexBuilder{
-		outDir:        outputFiles.GetIndexDir(),
-		baseIndexFile: baseIndexFile,
-		ngramList:     &NgramList{},
-		ngramSize:     ngramSize,
-		buffer:        vertical.NewNgramBuffer(ngramSize),
-		stopWords:     conf.NgramStopStrings,
-		ignoreWords:   conf.NgramIgnoreStrings,
-	}
+	builder := CreateIndexBuilder(conf, ngramSize)
 	vertical.ParseVerticalFile(conf.GetParserConf(), builder)
-	sortedIndexTmp, err := outputFiles.GetSortedIndexTmpPath(os.O_CREATE | os.O_TRUNC | os.O_WRONLY)
+	sortedIndexTmp, err := builder.outputFiles.GetSortedIndexTmpPath(os.O_CREATE | os.O_TRUNC | os.O_WRONLY)
 	if err != nil {
 		panic(err)
 	}
-	saveNgrams(builder.ngramList, conf.MinNgramFreq, sortedIndexTmp)
+	//saveNgrams(builder.ngramList, conf.MinNgramFreq, sortedIndexTmp)
+	saveEncodedNgrams(builder, conf.MinNgramFreq, sortedIndexTmp)
 	log.Printf("Saved raw n-gram file %s", sortedIndexTmp.Name())
 }

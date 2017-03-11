@@ -36,8 +36,17 @@ type NgramNode struct {
 	count int
 }
 
+func (n *NgramNode) GetCount() int {
+	return n.count
+}
+
+func (n *NgramNode) GetNgram() []string {
+	return n.ngram
+}
+
 type NgramList struct {
-	root *NgramNode
+	root     *NgramNode
+	numNodes int
 }
 
 func dfsWalkthruRecursive(node *NgramNode, fn func(n *NgramNode)) {
@@ -56,9 +65,14 @@ func (n *NgramList) DFSWalkthru(fn func(n *NgramNode)) {
 	}
 }
 
+func (n *NgramList) Size() int {
+	return n.numNodes
+}
+
 func (n *NgramList) Add(ngram []string) {
 	if n.root == nil {
 		n.root = &NgramNode{ngram: ngram, count: 1}
+		n.numNodes = 1
 
 	} else {
 		item := n.root
@@ -70,6 +84,7 @@ func (n *NgramList) Add(ngram []string) {
 
 				} else {
 					item.left = &NgramNode{ngram: ngram, count: 1}
+					n.numNodes++
 					item = nil // stop the iteration
 				}
 			case 1:
@@ -78,6 +93,7 @@ func (n *NgramList) Add(ngram []string) {
 
 				} else {
 					item.right = &NgramNode{ngram: ngram, count: 1}
+					n.numNodes++
 					item = nil // stop the iteration
 				}
 			case 0:
