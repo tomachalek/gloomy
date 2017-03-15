@@ -16,12 +16,13 @@ package builder
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
+	"github.com/tomachalek/gloomy/index"
 	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/vertical"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 type IndexBuilder struct {
@@ -47,6 +48,8 @@ type IndexBuilder struct {
 	buffer *vertical.NgramBuffer
 
 	wordDict *WordDict
+
+	nindex *index.DynamicNgramIndex
 }
 
 func (b *IndexBuilder) GetOutputFiles() *gconf.OutputFiles {
@@ -121,20 +124,29 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 		stopWords:     conf.NgramStopStrings,
 		ignoreWords:   conf.NgramIgnoreStrings,
 		wordDict:      NewWordDict(),
+		nindex:        index.NewDynamicNgramIndex(ngramSize, 10000), // TODO initial size
 	}
 }
 
 func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) error {
+	builder.wordDict.Save(filepath.Join(builder.GetOutputFiles().GetIndexDir(), "word-dict.txt"))
 	fw := bufio.NewWriter(saveFile)
 	defer fw.Flush()
 	builder.ngramList.DFSWalkthru(func(item *NgramNode) {
 		if item.count >= minFreq {
-			for _, w := range item.ngram {
-				binary.Write(fw, binary.LittleEndian, builder.wordDict.GetTokenIndex(w))
+			encodedNg := make([]int, len(item.ngram))
+			fmt.Println("processing ", item.GetNgram())
+			for i, w := range item.ngram {
+				encodedNg[i] = builder.wordDict.GetTokenIndex(w)
 			}
+			builder.nindex.AddNgram(encodedNg)
+			//binary.Write(fw, binary.LittleEndian, builder.wordDict.GetTokenIndex(w))
 			//(fmt.Sprintf("%s\t%d\n", strings.Join(item.ngram, "\t"), item.count))
 		}
 	})
+	builder.nindex.Finish()
+	log.Printf("Done: %s", builder.nindex.GetInfo())
+
 	return nil
 }
 
