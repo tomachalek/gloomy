@@ -16,9 +16,52 @@ package index
 
 import (
 	"fmt"
-	"log"
+	"github.com/tomachalek/gloomy/wstore"
 	"strings"
 )
+
+type NgramResultItem struct {
+	next  *NgramResultItem
+	ngram []int
+}
+
+type NgramSearchResult struct {
+	first *NgramResultItem
+	curr  *NgramResultItem
+	size  int
+}
+
+func (nsr *NgramSearchResult) GetSize() int {
+	return nsr.size
+}
+
+func (nsr *NgramSearchResult) ResetCursor() {
+	nsr.curr = nsr.first
+}
+
+func (nsr *NgramSearchResult) HasNext() bool {
+	return nsr.curr != nil
+}
+
+func (nsr *NgramSearchResult) Next() []int {
+	ans := nsr.curr
+	nsr.curr = nsr.curr.next
+	return ans.ngram
+}
+
+func (nsr *NgramSearchResult) addValue(ngram []int) {
+	item := &NgramResultItem{ngram: ngram}
+	if nsr.first == nil {
+		nsr.first = item
+	}
+	if nsr.curr != nil {
+		nsr.curr.next = item
+	}
+	nsr.curr = item
+	nsr.size++
+}
+
+// --------------------------------------------------------------------
 
 type IndexItem struct {
 	index int
@@ -39,11 +82,34 @@ func (n *NgramIndex) GetInfo() string {
 	return fmt.Sprintf("NgramIndex, num cols: %d, sizes %s", len(n.values), strings.Join(sizes, ", "))
 }
 
-func (n *NgramIndex) GetNgramsAt(position int) []int {
-	ans := make([]int, 10) // TODO (testing)
-	ans[0] = n.values[0][position].index
-	ans[1] = n.values[1][n.values[0][position].upTo].index
-	return ans
+func (n *NgramIndex) GetNgramsAt(position int) *NgramSearchResult {
+	result := &NgramSearchResult{}
+	n.getNextTokenRecords(position, 0, make([]int, 0), result)
+	result.ResetCursor()
+	return result
+}
+
+func (n *NgramIndex) getNextTokenRecords(position int, tokenIdx int, prevTokens []int, result *NgramSearchResult) {
+	col := n.values[tokenIdx]
+	from := position
+	if tokenIdx > 1 {
+		if position > 0 {
+			from = col[position-1].upTo + 1
+
+		} else {
+			from = 0
+		}
+	}
+	//log.Printf("tokenIdx: %d, token: %v, [%d, %d]", tokenIdx, col[position], from, position)
+	for _, idx := range col[from : position+1] {
+		currNgram := append(prevTokens, idx.index)
+		if tokenIdx == len(n.values)-1 {
+			result.addValue(currNgram)
+
+		} else {
+			n.getNextTokenRecords(idx.upTo, tokenIdx+1, currNgram, result)
+		}
+	}
 }
 
 func NewNgramIndex(ngramSize int, initialLength int) *NgramIndex {
@@ -55,6 +121,30 @@ func NewNgramIndex(ngramSize int, initialLength int) *NgramIndex {
 	}
 	return ans
 }
+
+// ----------------------------------------------------------------------------
+
+type SearchableIndex struct {
+	index  *NgramIndex
+	wstore *wstore.WordIndex
+}
+
+func (si *SearchableIndex) GetNgramsOf(word string) [][]string {
+	w := si.wstore.Find(word)
+	result := si.index.GetNgramsAt(w)
+	ans := make([][]string, result.GetSize())
+	for i := 0; result.HasNext(); i++ {
+		tmp := result.Next()
+		ans[i] = si.wstore.DecodeNgram(tmp)
+	}
+	return ans
+}
+
+func OpenSearchableIndex(index *NgramIndex, wstore *wstore.WordIndex) *SearchableIndex {
+	return &SearchableIndex{index: index, wstore: wstore}
+}
+
+// ----------------------------------------------------------------------------
 
 // DynamicNgramIndex allows adding items to the index
 type DynamicNgramIndex struct {
@@ -75,8 +165,16 @@ func NewDynamicNgramIndex(ngramSize int, initialLength int) *DynamicNgramIndex {
 	}
 }
 
+func (nib *DynamicNgramIndex) GetIndex() *NgramIndex {
+	return nib.index
+}
+
 func (nib *DynamicNgramIndex) GetInfo() string {
 	return nib.index.GetInfo()
+}
+
+func (nib *DynamicNgramIndex) GetNgramsAt(position int) *NgramSearchResult {
+	return nib.index.GetNgramsAt(position)
 }
 
 func (nib *DynamicNgramIndex) AddNgram(ngram []int) {
@@ -97,16 +195,16 @@ func (nib *DynamicNgramIndex) addValue(tokenPos int, index int) {
 		nib.index.values[tokenPos] = append(col, make(IndexColumn, nib.initialLength/2)...)
 		col = nib.index.values[tokenPos]
 	}
-	upTo := -1
+	upTo := 0
 	if tokenPos < len(nib.cursors)-1 {
 		upTo = nib.cursors[tokenPos+1]
 	}
 	if nib.cursors[tokenPos] == -1 || nib.index.values[tokenPos][nib.cursors[tokenPos]].index != index {
 		nib.cursors[tokenPos]++
 		col[nib.cursors[tokenPos]] = &IndexItem{index: index, upTo: upTo}
-		log.Printf("adding pos %d, record [%d, %d]", tokenPos, index, upTo)
+		//log.Printf("adding pos %d, record [%d, %d]", tokenPos, index, upTo)
 
 	} else {
-		log.Println("Not moving cursor on ", index)
+		//log.Println("Not moving cursor on ", index)
 	}
 }

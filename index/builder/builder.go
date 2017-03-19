@@ -20,6 +20,7 @@ import (
 	"github.com/tomachalek/gloomy/index"
 	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/vertical"
+	"github.com/tomachalek/gloomy/wstore"
 	"log"
 	"os"
 	"path/filepath"
@@ -47,7 +48,7 @@ type IndexBuilder struct {
 
 	buffer *vertical.NgramBuffer
 
-	wordDict *WordDict
+	wordDict *WordDictBuilder
 
 	nindex *index.DynamicNgramIndex
 }
@@ -123,19 +124,20 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 		buffer:        vertical.NewNgramBuffer(ngramSize),
 		stopWords:     conf.NgramStopStrings,
 		ignoreWords:   conf.NgramIgnoreStrings,
-		wordDict:      NewWordDict(),
+		wordDict:      NewWordDictBuilder(),
 		nindex:        index.NewDynamicNgramIndex(ngramSize, 10000), // TODO initial size
 	}
 }
 
 func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) error {
-	builder.wordDict.Save(filepath.Join(builder.GetOutputFiles().GetIndexDir(), "word-dict.txt"))
+	wordDictPath := filepath.Join(builder.GetOutputFiles().GetIndexDir(), "word-dict.txt")
+	builder.wordDict.Save(wordDictPath)
 	fw := bufio.NewWriter(saveFile)
 	defer fw.Flush()
 	builder.ngramList.DFSWalkthru(func(item *NgramNode) {
 		if item.count >= minFreq {
 			encodedNg := make([]int, len(item.ngram))
-			fmt.Println("processing ", item.GetNgram())
+			//fmt.Println("processing ", item.GetNgram())
 			for i, w := range item.ngram {
 				encodedNg[i] = builder.wordDict.GetTokenIndex(w)
 			}
@@ -146,7 +148,21 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) er
 	})
 	builder.nindex.Finish()
 	log.Printf("Done: %s", builder.nindex.GetInfo())
-
+	ws, err := wstore.LoadWordDict(wordDictPath)
+	if err != nil {
+		panic(err)
+	}
+	log.Print("--------------------------------------------------")
+	si := index.OpenSearchableIndex(builder.nindex.GetIndex(), ws)
+	log.Print("RESULT: ", si.GetNgramsOf("work"))
+	/*
+		result = builder.nindex.GetNgramsAt(1)
+		log.Printf("TEST: %d\n", result.GetSize())
+		for result.HasNext() {
+			tmp := result.Next()
+			log.Print(ws.DecodeNgram(tmp))
+		}
+	*/
 	return nil
 }
 

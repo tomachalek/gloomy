@@ -15,41 +15,86 @@
 package wstore
 
 import (
-	"encoding/gob"
-	"fmt"
+	"bufio"
+	"encoding/binary"
+	"log"
 	"os"
 )
 
-func SaveWordDict(data []string, outPath string) error {
-	f, err := os.OpenFile(outPath, os.O_CREATE, 0)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to save map: %s", err))
-	}
-	enc := gob.NewEncoder(f)
-	return enc.Encode(data)
-}
-
-func LoadWordDict(dataPath string) ([]string, error) {
-	f, err := os.Open(dataPath)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to load map: %s", err))
-	}
-	dec := gob.NewDecoder(f)
+func loadWords(srcPath string, size int) ([]string, error) {
 	var ans []string
-	return ans, dec.Decode(&ans)
+	f, err := os.Open(srcPath)
+	if err != nil {
+		return ans, err
+	}
+	ans = make([]string, size)
+	fr := bufio.NewScanner(f)
+	for i := 0; fr.Scan(); i++ {
+		ans[i] = fr.Text()
+	}
+	return ans, nil
 }
 
-func FindIndex(word string, data []string) int {
+func loadIndices(srcPath string) ([]int, error) {
+	var ans []int
+	f, err := os.Open(srcPath)
+	if err != nil {
+		return ans, err
+	}
+	defer f.Close()
+	fr := bufio.NewReader(f)
+	var readErr error
+	var size int64
+
+	readErr = binary.Read(fr, binary.LittleEndian, &size)
+	if readErr != nil {
+		return ans, readErr
+	}
+	var tmp int64
+	ans = make([]int, size)
+	for i := 0; i < int(size); i++ {
+		readErr = binary.Read(fr, binary.LittleEndian, &tmp)
+		ans[i] = int(tmp)
+		if readErr != nil {
+			return ans, readErr
+		}
+	}
+	return ans, nil
+}
+
+type WordIndex struct {
+	data    []string
+	indices []int
+	wmap    []*string
+}
+
+func LoadWordDict(dataPath string) (*WordIndex, error) {
+	indices, err := loadIndices(dataPath + ".idx")
+	if err != nil {
+		return nil, err
+	}
+	words, err := loadWords(dataPath, len(indices))
+	if err != nil {
+		return nil, err
+	}
+	wmap := make([]*string, len(indices))
+	for i := 0; i < len(indices); i++ {
+		wmap[indices[i]] = &words[i]
+	}
+	return &WordIndex{indices: indices, data: words, wmap: wmap}, err
+}
+
+func (w *WordIndex) Find(word string) int {
 	left := 0
-	right := len(data) - 1
-	pivot := len(data) / 2
-	for left < right && data[pivot] != word {
-		if data[left] <= word && word <= data[pivot] {
+	right := len(w.data) - 1
+	pivot := len(w.data) / 2
+	for left < right && w.data[pivot] != word {
+		if w.data[left] <= word && word <= w.data[pivot] {
 			tmp := pivot
 			pivot = (left + pivot) / 2
 			right = tmp
 
-		} else if data[pivot] < word && word <= data[right] {
+		} else if w.data[pivot] < word && word <= w.data[right] {
 			tmp := pivot
 			pivot = (pivot + right) / 2
 			left = tmp
@@ -58,8 +103,17 @@ func FindIndex(word string, data []string) int {
 			// TODO Not found
 		}
 	}
-	if word == data[pivot] {
-		return pivot
+	if word == w.data[pivot] {
+		log.Print("srch for ", word, ", raw idx: ", pivot, ", translated: ", w.indices[pivot])
+		return w.indices[pivot]
 	}
 	return -1
+}
+
+func (w *WordIndex) DecodeNgram(ngram []int) []string {
+	ans := make([]string, len(ngram))
+	for i, val := range ngram {
+		ans[i] = *w.wmap[val]
+	}
+	return ans
 }
