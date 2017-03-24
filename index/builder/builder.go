@@ -152,7 +152,6 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) er
 	if err != nil {
 		panic(err)
 	}
-	log.Print("--------------------------------------------------")
 	si := index.OpenSearchableIndex(builder.nindex.GetIndex(), ws)
 	log.Print("RESULT: ", si.GetNgramsOf("work"))
 	/*

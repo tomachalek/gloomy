@@ -130,9 +130,13 @@ type SearchableIndex struct {
 }
 
 func (si *SearchableIndex) GetNgramsOf(word string) [][]string {
+	var ans [][]string
 	w := si.wstore.Find(word)
+	if w == -1 {
+		return ans
+	}
 	result := si.index.GetNgramsAt(w)
-	ans := make([][]string, result.GetSize())
+	ans = make([][]string, result.GetSize())
 	for i := 0; result.HasNext(); i++ {
 		tmp := result.Next()
 		ans[i] = si.wstore.DecodeNgram(tmp)

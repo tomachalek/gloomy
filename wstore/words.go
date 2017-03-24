@@ -17,7 +17,6 @@ package wstore
 import (
 	"bufio"
 	"encoding/binary"
-	"log"
 	"os"
 )
 
@@ -100,11 +99,11 @@ func (w *WordIndex) Find(word string) int {
 			left = tmp
 
 		} else {
-			// TODO Not found
+			break
 		}
+
 	}
 	if word == w.data[pivot] {
-		log.Print("srch for ", word, ", raw idx: ", pivot, ", translated: ", w.indices[pivot])
 		return w.indices[pivot]
 	}
 	return -1
