@@ -84,30 +84,26 @@ func (n *NgramIndex) GetInfo() string {
 
 func (n *NgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 	result := &NgramSearchResult{}
-	n.getNextTokenRecords(position, 0, make([]int, 0), result)
+	n.getNextTokenRecords(0, position, position, make([]int, 0), result)
 	result.ResetCursor()
 	return result
 }
 
-func (n *NgramIndex) getNextTokenRecords(position int, tokenIdx int, prevTokens []int, result *NgramSearchResult) {
-	col := n.values[tokenIdx]
-	from := position
-	if tokenIdx > 1 {
-		if position > 0 {
-			from = col[position-1].upTo + 1
-
-		} else {
-			from = 0
-		}
-	}
-	//log.Printf("tokenIdx: %d, token: %v, [%d, %d]", tokenIdx, col[position], from, position)
-	for _, idx := range col[from : position+1] {
+func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, prevTokens []int, result *NgramSearchResult) {
+	col := n.values[colIdx]
+	for i := fromRow; i <= toRow; i++ {
+		idx := col[i]
 		currNgram := append(prevTokens, idx.index)
-		if tokenIdx == len(n.values)-1 {
+		if colIdx == len(n.values)-1 {
 			result.addValue(currNgram)
 
 		} else {
-			n.getNextTokenRecords(idx.upTo, tokenIdx+1, currNgram, result)
+			nextFromIdx := 0
+			if fromRow > 0 {
+				nextFromIdx = col[i-1].upTo + 1
+			}
+			nextToIdx := idx.upTo
+			n.getNextTokenRecords(colIdx+1, nextFromIdx, nextToIdx, currNgram, result)
 		}
 	}
 }
@@ -195,7 +191,7 @@ func (nib *DynamicNgramIndex) Finish() {
 
 func (nib *DynamicNgramIndex) addValue(tokenPos int, index int) {
 	col := nib.index.values[tokenPos]
-	if nib.cursors[tokenPos] >= len(col) {
+	if nib.cursors[tokenPos] >= len(col)-1 {
 		nib.index.values[tokenPos] = append(col, make(IndexColumn, nib.initialLength/2)...)
 		col = nib.index.values[tokenPos]
 	}
@@ -206,9 +202,10 @@ func (nib *DynamicNgramIndex) addValue(tokenPos int, index int) {
 	if nib.cursors[tokenPos] == -1 || nib.index.values[tokenPos][nib.cursors[tokenPos]].index != index {
 		nib.cursors[tokenPos]++
 		col[nib.cursors[tokenPos]] = &IndexItem{index: index, upTo: upTo}
-		//log.Printf("adding pos %d, record [%d, %d]", tokenPos, index, upTo)
 
 	} else {
-		//log.Println("Not moving cursor on ", index)
+		if tokenPos > 0 {
+			col[nib.cursors[tokenPos]].upTo++
+		}
 	}
 }
