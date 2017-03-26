@@ -16,7 +16,7 @@ package builder
 
 import (
 	"bufio"
-	"encoding/binary"
+	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -63,7 +63,23 @@ func (w *WordDictBuilder) GetTokenIndex(token string) int {
 	return 0
 }
 
-func saveWords(data []string, dstPath string) error {
+func (w *WordDictBuilder) Finalize(dstPath string) {
+	tmp := make([]string, len(w.index))
+	i := 0
+	for k := range w.index {
+		tmp[i] = k
+		i++
+	}
+	sort.Strings(tmp)
+	i = 0
+	for _, v := range tmp {
+		w.index[v] = i
+		i++
+	}
+	w.save(tmp, dstPath)
+}
+
+func (w *WordDictBuilder) save(data []string, dstPath string) error {
 	f, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY, 0664)
 	defer f.Close()
 	if err != nil {
@@ -72,52 +88,9 @@ func saveWords(data []string, dstPath string) error {
 	fw := bufio.NewWriter(f)
 	defer fw.Flush()
 	log.Print("Words data len: ", len(data))
+	fw.WriteString(fmt.Sprintf("%d\n", len(data)))
 	for _, w := range data {
-		//log.Print("w ", w)
 		fw.WriteString(w + "\n")
-	}
-	return nil
-}
-
-func saveIndices(data []int, dstPath string) error {
-	f, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY, 0664)
-	defer f.Close()
-	if err != nil {
-		return err
-	}
-	fw := bufio.NewWriter(f)
-	defer fw.Flush()
-	werr := binary.Write(fw, binary.LittleEndian, int64(len(data)))
-	log.Print("SAVING SIZE: ", int64(len(data)))
-	if werr != nil {
-		return werr
-	}
-	for _, v := range data {
-		werr = binary.Write(fw, binary.LittleEndian, int64(v))
-		if werr != nil {
-			return werr
-		}
-	}
-	return nil
-}
-
-func (w *WordDictBuilder) Save(dstPath string) error {
-	we := wordDictExport{
-		words:   make([]string, len(w.index)),
-		indices: make([]int, len(w.index)),
-	}
-	for k, v := range w.index {
-		we.words[v] = k
-		we.indices[v] = v
-	}
-	sort.Sort(&we)
-	err := saveWords(we.words, dstPath)
-	if err != nil {
-		return err
-	}
-	err = saveIndices(we.indices, dstPath+".idx")
-	if err != nil {
-		return err
 	}
 	return nil
 }

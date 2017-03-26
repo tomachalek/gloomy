@@ -18,16 +18,22 @@ import (
 	"bufio"
 	"encoding/binary"
 	"os"
+	"strconv"
 )
 
-func loadWords(srcPath string, size int) ([]string, error) {
+func loadWords(srcPath string) ([]string, error) {
 	var ans []string
 	f, err := os.Open(srcPath)
 	if err != nil {
 		return ans, err
 	}
-	ans = make([]string, size)
 	fr := bufio.NewScanner(f)
+	fr.Scan() // size
+	size, err := strconv.ParseInt(fr.Text(), 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	ans = make([]string, size)
 	for i := 0; fr.Scan(); i++ {
 		ans[i] = fr.Text()
 	}
@@ -62,25 +68,20 @@ func loadIndices(srcPath string) ([]int, error) {
 }
 
 type WordIndex struct {
-	data    []string
-	indices []int
-	wmap    []*string
+	data []string
+	wmap []*string
 }
 
 func LoadWordDict(dataPath string) (*WordIndex, error) {
-	indices, err := loadIndices(dataPath + ".idx")
+	words, err := loadWords(dataPath)
 	if err != nil {
 		return nil, err
 	}
-	words, err := loadWords(dataPath, len(indices))
-	if err != nil {
-		return nil, err
+	wmap := make([]*string, len(words))
+	for i := 0; i < len(words); i++ {
+		wmap[i] = &words[i]
 	}
-	wmap := make([]*string, len(indices))
-	for i := 0; i < len(indices); i++ {
-		wmap[indices[i]] = &words[i]
-	}
-	return &WordIndex{indices: indices, data: words, wmap: wmap}, err
+	return &WordIndex{data: words, wmap: wmap}, err
 }
 
 func (w *WordIndex) Find(word string) int {
@@ -104,7 +105,7 @@ func (w *WordIndex) Find(word string) int {
 
 	}
 	if word == w.data[pivot] {
-		return w.indices[pivot]
+		return pivot
 	}
 	return -1
 }

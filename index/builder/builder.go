@@ -131,7 +131,7 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 
 func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) error {
 	wordDictPath := filepath.Join(builder.GetOutputFiles().GetIndexDir(), "word-dict.txt")
-	builder.wordDict.Save(wordDictPath)
+	builder.wordDict.Finalize(wordDictPath)
 	fw := bufio.NewWriter(saveFile)
 	defer fw.Flush()
 	builder.ngramList.DFSWalkthru(func(item *NgramNode) {
@@ -152,17 +152,25 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) er
 	if err != nil {
 		panic(err)
 	}
+	log.Print("word dict done...")
+
+	TestDataAt(builder, ws, 2987)
+	TestDataAt(builder, ws, 2300)
+
 	si := index.OpenSearchableIndex(builder.nindex.GetIndex(), ws)
-	log.Print("RESULT: ", si.GetNgramsOf("work"))
-	/*
-		result = builder.nindex.GetNgramsAt(1)
-		log.Printf("TEST: %d\n", result.GetSize())
-		for result.HasNext() {
-			tmp := result.Next()
-			log.Print(ws.DecodeNgram(tmp))
-		}
-	*/
+	log.Print("RESULT: ", si.GetNgramsOf("went"))
+
 	return nil
+}
+
+// TODO remove when debug is done
+func TestDataAt(builder *IndexBuilder, ws *wstore.WordIndex, idx int) {
+	log.Printf("TestDataAt(%d)", idx)
+	result := builder.nindex.GetNgramsAt(idx)
+	for result.HasNext() {
+		tmp := result.Next()
+		log.Printf("  %s", ws.DecodeNgram(tmp))
+	}
 }
 
 func CreateGloomyIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
