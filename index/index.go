@@ -17,6 +17,7 @@ package index
 import (
 	"fmt"
 	"github.com/tomachalek/gloomy/wstore"
+	"sort"
 	"strings"
 )
 
@@ -128,10 +129,13 @@ type SearchableIndex struct {
 func (si *SearchableIndex) GetNgramsOf(word string) [][]string {
 	var ans [][]string
 	w := si.wstore.Find(word)
-	if w == -1 {
+	col0Idx := sort.Search(len(si.index.values[0]), func(i int) bool {
+		return si.index.values[0][i].index >= w
+	})
+	if col0Idx == len(si.index.values[0]) {
 		return ans
 	}
-	result := si.index.GetNgramsAt(w)
+	result := si.index.GetNgramsAt(col0Idx)
 	ans = make([][]string, result.GetSize())
 	for i := 0; result.HasNext(); i++ {
 		tmp := result.Next()
@@ -204,8 +208,6 @@ func (nib *DynamicNgramIndex) addValue(tokenPos int, index int) {
 		col[nib.cursors[tokenPos]] = &IndexItem{index: index, upTo: upTo}
 
 	} else {
-		if tokenPos > 0 {
-			col[nib.cursors[tokenPos]].upTo++
-		}
+		col[nib.cursors[tokenPos]].upTo++
 	}
 }
