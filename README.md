@@ -7,7 +7,22 @@ An ngram database
 
 ## Building an index
 
-... under development ...
+```
+gloomy -ngram-size 3 create-index ./config.json
+```
+
+where *config.json* looks like this:
+
+```json
+{
+    "verticalFilePath": "/path/to/a/vertical/file",
+    "filterArgs": [],
+    "ngramIgnoreStructs": [],
+    "ngramStopStrings": [".", ":"],
+    "ngramIgnoreStrings": ["\"", ","],
+    "outDirectory": "/path/to/an/output/directory"
+}
+```
 
 ## Searching
 
