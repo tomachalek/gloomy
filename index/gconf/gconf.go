@@ -35,6 +35,27 @@ func stripSuffix(filePath string) string {
 
 // ---------------------------------------------------------
 
+type SearchConf struct {
+	DataPath      string `json:"dataPath"`
+	ServerPort    int    `json:"serverPort"`
+	ServerAddress string `json:"serverAddress"`
+}
+
+func LoadSearchConf(confPath string) *SearchConf {
+	rawData, err := ioutil.ReadFile(confPath)
+	if err != nil {
+		panic(err)
+	}
+	var conf SearchConf
+	err = json.Unmarshal(rawData, &conf)
+	if err != nil {
+		panic(err)
+	}
+	return &conf
+}
+
+// ---------------------------------------------------------
+
 type IndexBuilderConf struct {
 	OutDirectory string `json:"outDirectory"`
 	MinNgramFreq int    `json:"minNgramFreq"`

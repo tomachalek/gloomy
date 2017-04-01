@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"os"
+	"path/filepath"
 	"strconv"
 )
 
@@ -73,7 +74,7 @@ type WordIndex struct {
 }
 
 func LoadWordDict(dataPath string) (*WordIndex, error) {
-	words, err := loadWords(dataPath)
+	words, err := loadWords(filepath.Join(dataPath, "word-dict.txt"))
 	if err != nil {
 		return nil, err
 	}

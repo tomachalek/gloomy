@@ -25,11 +25,14 @@ import (
 	"github.com/tomachalek/gloomy/index/builder"
 	"github.com/tomachalek/gloomy/index/extras"
 	"github.com/tomachalek/gloomy/index/gconf"
+	"github.com/tomachalek/gloomy/service"
 )
 
 const (
 	createIndexAction   = "create-index"
 	extractNgramsAction = "extract-ngrams"
+	searchServiceAction = "search-service"
+	searchAction        = "search"
 )
 
 func help() {
@@ -66,8 +69,38 @@ func extractNgrams(conf *gconf.IndexBuilderConf, ngramSize int) {
 	fmt.Printf("DONE in %s\n", time.Since(t0))
 }
 
+func loadSearchConf(confBasePath string) *gconf.SearchConf {
+	if confBasePath == "" {
+		var err error
+		confBasePath, err = os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		confBasePath = filepath.Join(confBasePath, "gloomy.json")
+	}
+	return gconf.LoadSearchConf(confBasePath)
+}
+
+func searchCLI(confBasePath string, query string) {
+	conf := loadSearchConf(confBasePath)
+	ans, err := service.Search(conf.DataPath, "susanne", query)
+	if err != nil {
+		log.Printf("Srch error: %s", err)
+	}
+	for i := 0; ans.HasNext(); i++ {
+		v := ans.Next()
+		log.Printf("res[%d]: %s", i, v)
+	}
+}
+
+func startSearchService(confBasePath string) {
+	conf := loadSearchConf(confBasePath)
+	service.Serve(conf)
+}
+
 func main() {
 	ngramSize := flag.Int("ngram-size", 2, "N-gram size, 2: bigram (default), ...")
+	srchConfPath := flag.String("conf-path", "", "Path to the gloomy.conf (by default, working dir is used")
 	flag.Parse()
 	if len(flag.Args()) == 0 {
 		fmt.Println("Missing action, try -h for help")
@@ -83,6 +116,10 @@ func main() {
 		case extractNgramsAction:
 			conf := gconf.LoadIndexBuilderConf(flag.Arg(1))
 			extractNgrams(conf, *ngramSize)
+		case searchServiceAction:
+			startSearchService(*srchConfPath)
+		case searchAction:
+			searchCLI(*srchConfPath, flag.Arg(1))
 		default:
 			panic("Unknown action")
 		}

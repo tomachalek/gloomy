@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 )
 
@@ -76,7 +77,7 @@ func (w *WordDictBuilder) Finalize(dstPath string) {
 		w.index[v] = i
 		i++
 	}
-	w.save(tmp, dstPath)
+	w.save(tmp, filepath.Join(dstPath, "word-dict.txt"))
 }
 
 func (w *WordDictBuilder) save(data []string, dstPath string) error {
