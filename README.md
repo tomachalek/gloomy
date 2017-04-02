@@ -55,7 +55,7 @@ gloomy search-service
 
 ## Additional functions
 
-# Extracting sorted unique n-grams with frequencies
+### Extracting sorted unique n-grams with frequencies
 
 ```
 gloomy -ngram-size 3 extract-ngrams ./config.json
