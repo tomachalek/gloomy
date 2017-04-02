@@ -1,11 +1,14 @@
 # gloomy
-An ngram database
+
+An n-gram database written in Go.
 
 
 ... a work in progress project
 
 
 ## Building an index
+
+Currently, *gloomy* expects a text source file to be compatible with [vertical format](https://www.sketchengine.co.uk/documentation/preparing-corpus-text/).
 
 ```
 gloomy -ngram-size 3 create-index ./config.json
@@ -26,7 +29,29 @@ where *config.json* looks like this:
 
 ## Searching
 
-... under development ...
+In the searching mode, a *gloomy.conf* file (by default in the working directory) is expected:
+
+```json
+{
+    "dataPath": "/path/to/indices/data",
+    "serverPort": 8090,
+    "serverAddress": "127.0.0.1"
+}
+```
+
+### command line mode
+
+```
+gloomy search corpname phrase
+```
+
+### HTTP server mode
+
+```
+gloomy search-service 
+```
+
+
 
 ## Additional functions
 
