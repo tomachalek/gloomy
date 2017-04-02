@@ -236,10 +236,35 @@ func (nib *DynamicNgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 // AddNgram adds a new n-gram represented as an array
 // of indices to the index
 func (nib *DynamicNgramIndex) AddNgram(ngram []int) {
-	addedNewPos := true
-	for i := len(ngram) - 1; i >= 0; i-- {
-		addedNewPos = nib.addValue(i, ngram[i], addedNewPos)
+	sp := nib.findSplitPosition(ngram)
+	for i := 0; i < len(nib.index.values); i++ {
+		col := nib.index.values[i]
+		if nib.cursors[i] >= len(col)-1 {
+			nib.index.values[i] = append(col, make(indexColumn, nib.initialLength/2)...)
+			col = nib.index.values[i]
+		}
+
+		if i == sp-1 {
+			col[nib.cursors[i]].upTo++
+
+		} else if i > sp-1 {
+			nib.cursors[i]++
+			upTo := 0
+			if i < len(nib.cursors)-1 {
+				upTo = nib.cursors[i+1] + 1
+			}
+			col[nib.cursors[i]] = &indexItem{index: ngram[i], upTo: upTo}
+		}
 	}
+}
+
+func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
+	for i := 0; i < len(ngram); i++ {
+		if nib.cursors[i] == -1 || ngram[i] != nib.index.values[i][nib.cursors[i]].index {
+			return i
+		}
+	}
+	return -1
 }
 
 // Finish should be called once adding of n-grams
@@ -251,37 +276,13 @@ func (nib *DynamicNgramIndex) Finish() {
 	}
 }
 
-func (nib *DynamicNgramIndex) addValue(tokenPos int, index int, nextPosChanged bool) bool {
-
-	col := nib.index.values[tokenPos]
-	if nib.cursors[tokenPos] >= len(col)-1 {
-		nib.index.values[tokenPos] = append(col, make(indexColumn, nib.initialLength/2)...)
-		col = nib.index.values[tokenPos]
-	}
-	upTo := 0
-	if tokenPos < len(nib.cursors)-1 {
-		upTo = nib.cursors[tokenPos+1]
-	}
-	addedNewPos := false
-	if nib.cursors[tokenPos] == -1 || nib.index.values[tokenPos][nib.cursors[tokenPos]].index != index {
-		nib.cursors[tokenPos]++
-		col[nib.cursors[tokenPos]] = &indexItem{index: index, upTo: upTo}
-		addedNewPos = true
-
-	} else if nextPosChanged {
-		col[nib.cursors[tokenPos]].upTo++
-	}
-	return addedNewPos
-
-}
-
 func createColIdxPath(colIdx int, dirPath string) string {
 	return filepath.Join(dirPath, fmt.Sprintf(ColumnIndexFilenameMask, colIdx))
 }
 
 func (nib *DynamicNgramIndex) saveIndexColumn(colIdx int, dirPath string) error {
 	dstPath := createColIdxPath(colIdx, dirPath)
-	f, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY, 0664)
+	f, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0664)
 	defer f.Close()
 	if err != nil {
 		return err
