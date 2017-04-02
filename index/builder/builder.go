@@ -135,13 +135,10 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) er
 	builder.ngramList.DFSWalkthru(func(item *NgramNode) {
 		if item.count >= minFreq {
 			encodedNg := make([]int, len(item.ngram))
-			//fmt.Println("processing ", item.GetNgram())
 			for i, w := range item.ngram {
 				encodedNg[i] = builder.wordDict.GetTokenIndex(w)
 			}
 			builder.nindex.AddNgram(encodedNg)
-			//binary.Write(fw, binary.LittleEndian, builder.wordDict.GetTokenIndex(w))
-			//(fmt.Sprintf("%s\t%d\n", strings.Join(item.ngram, "\t"), item.count))
 		}
 	})
 	builder.nindex.Finish()

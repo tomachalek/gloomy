@@ -236,8 +236,9 @@ func (nib *DynamicNgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 // AddNgram adds a new n-gram represented as an array
 // of indices to the index
 func (nib *DynamicNgramIndex) AddNgram(ngram []int) {
+	addedNewPos := true
 	for i := len(ngram) - 1; i >= 0; i-- {
-		nib.addValue(i, ngram[i])
+		addedNewPos = nib.addValue(i, ngram[i], addedNewPos)
 	}
 }
 
@@ -250,7 +251,8 @@ func (nib *DynamicNgramIndex) Finish() {
 	}
 }
 
-func (nib *DynamicNgramIndex) addValue(tokenPos int, index int) {
+func (nib *DynamicNgramIndex) addValue(tokenPos int, index int, nextPosChanged bool) bool {
+
 	col := nib.index.values[tokenPos]
 	if nib.cursors[tokenPos] >= len(col)-1 {
 		nib.index.values[tokenPos] = append(col, make(indexColumn, nib.initialLength/2)...)
@@ -260,13 +262,17 @@ func (nib *DynamicNgramIndex) addValue(tokenPos int, index int) {
 	if tokenPos < len(nib.cursors)-1 {
 		upTo = nib.cursors[tokenPos+1]
 	}
+	addedNewPos := false
 	if nib.cursors[tokenPos] == -1 || nib.index.values[tokenPos][nib.cursors[tokenPos]].index != index {
 		nib.cursors[tokenPos]++
 		col[nib.cursors[tokenPos]] = &indexItem{index: index, upTo: upTo}
+		addedNewPos = true
 
-	} else {
+	} else if nextPosChanged {
 		col[nib.cursors[tokenPos]].upTo++
 	}
+	return addedNewPos
+
 }
 
 func createColIdxPath(colIdx int, dirPath string) string {
