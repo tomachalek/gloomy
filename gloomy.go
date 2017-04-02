@@ -81,9 +81,9 @@ func loadSearchConf(confBasePath string) *gconf.SearchConf {
 	return gconf.LoadSearchConf(confBasePath)
 }
 
-func searchCLI(confBasePath string, query string) {
+func searchCLI(confBasePath string, corpus string, query string) {
 	conf := loadSearchConf(confBasePath)
-	ans, err := service.Search(conf.DataPath, "susanne", query)
+	ans, err := service.Search(conf.DataPath, corpus, query)
 	if err != nil {
 		log.Printf("Srch error: %s", err)
 	}
@@ -119,7 +119,10 @@ func main() {
 		case searchServiceAction:
 			startSearchService(*srchConfPath)
 		case searchAction:
-			searchCLI(*srchConfPath, flag.Arg(1))
+			if flag.Arg(1) == "" || flag.Arg(2) == "" {
+				log.Fatal("Missing argument (both corpus and query must be specified)")
+			}
+			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2))
 		default:
 			panic("Unknown action")
 		}
