@@ -18,6 +18,17 @@
 
 package index
 
+import (
+	"bufio"
+	"encoding/binary"
+	"os"
+)
+
+type indexItem struct {
+	index int
+	upTo  int
+}
+
 type indexColumn struct {
 	data []*indexItem
 }
@@ -45,4 +56,23 @@ func (ic *indexColumn) slice(rightIdx int) {
 
 func newIndexColumn(size int) *indexColumn {
 	return &indexColumn{data: make([]*indexItem, size)}
+}
+
+func loadIndexColumn(indexPath string) *indexColumn {
+	f, err := os.Open(indexPath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	fr := bufio.NewReader(f)
+	var colLength int64
+	binary.Read(fr, binary.LittleEndian, &colLength)
+	ans := newIndexColumn(int(colLength))
+	for i := 0; i < int(colLength); i++ {
+		var index, upTo int64
+		binary.Read(fr, binary.LittleEndian, &index)
+		binary.Read(fr, binary.LittleEndian, &upTo)
+		ans.set(i, &indexItem{index: int(index), upTo: int(upTo)})
+	}
+	return ans
 }

@@ -104,11 +104,6 @@ func (nsr *NgramSearchResult) addValue(ngram []int) {
 
 // --------------------------------------------------------------------
 
-type indexItem struct {
-	index int
-	upTo  int
-}
-
 // NgramIndex is a low-level implementation
 // of a n-gram index.
 type NgramIndex struct {
@@ -297,25 +292,6 @@ func (nib *DynamicNgramIndex) saveIndexColumn(colIdx int, dirPath string) error 
 		binary.Write(fw, binary.LittleEndian, int64(idx.upTo))
 	}
 	return nil
-}
-
-func loadIndexColumn(indexPath string) *indexColumn {
-	f, err := os.Open(indexPath)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	fr := bufio.NewReader(f)
-	var colLength int64
-	binary.Read(fr, binary.LittleEndian, &colLength)
-	ans := newIndexColumn(int(colLength))
-	for i := 0; i < int(colLength); i++ {
-		var index, upTo int64
-		binary.Read(fr, binary.LittleEndian, &index)
-		binary.Read(fr, binary.LittleEndian, &upTo)
-		ans.set(i, &indexItem{index: int(index), upTo: int(upTo)})
-	}
-	return ans
 }
 
 // LoadNgramIndex loads index data from within
