@@ -20,7 +20,6 @@ import (
 	"github.com/tomachalek/gloomy/index"
 	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/vertical"
-	"github.com/tomachalek/gloomy/wstore"
 	"log"
 	"os"
 )
@@ -143,14 +142,6 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) er
 	})
 	builder.nindex.Finish()
 	log.Printf("Done: %s", builder.nindex.GetInfo())
-	ws, err := wstore.LoadWordDict(builder.GetOutputFiles().GetIndexDir())
-	if err != nil {
-		panic(err)
-	}
-	log.Print("word dict done...")
-
-	si := index.OpenSearchableIndex(builder.nindex.GetIndex(), ws)
-	log.Print("RESULT: ", si.GetNgramsOf("went"))
 	builder.nindex.Save(builder.GetOutputFiles().GetIndexDir())
 	return nil
 }
