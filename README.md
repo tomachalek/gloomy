@@ -1,6 +1,6 @@
 # gloomy
 
-An n-gram database written in Go.
+An n-gram database written in Go, optimized for *write once read many* use.
 
 
 ... a work in progress project
