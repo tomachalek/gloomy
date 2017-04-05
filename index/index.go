@@ -22,6 +22,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/tomachalek/gloomy/wstore"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -122,10 +123,28 @@ func (n *NgramIndex) GetInfo() string {
 
 // GetNgramsAt returns all the ngrams where the first word index equals position
 func (n *NgramIndex) GetNgramsAt(position int) *NgramSearchResult {
+	n.loadData(position, position) // TODO multiple search phrases not supported yet
 	result := &NgramSearchResult{}
 	n.getNextTokenRecords(0, position, position, make([]int, 0), result)
 	result.ResetCursor()
 	return result
+}
+
+func (n *NgramIndex) findLoadRange(colIdx int, fromRow int, toRow int) (int, int) {
+	log.Print("FIND load range ", colIdx, fromRow, toRow)
+	leftIdx := fromRow
+	if fromRow > 0 {
+		leftIdx = n.values[colIdx].get(fromRow-1).upTo + 1
+	}
+	rightIdx := n.values[colIdx].get(toRow).upTo
+	return leftIdx, rightIdx
+}
+
+func (n *NgramIndex) loadData(fromRow int, toRow int) {
+	for i := 0; i < len(n.values)-1; i++ {
+		fromRow, toRow = n.findLoadRange(i, fromRow, toRow)
+		n.values[i+1].loadChunk(fromRow, toRow)
+	}
 }
 
 func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, prevTokens []int, result *NgramSearchResult) {
@@ -264,7 +283,7 @@ func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
 // for new n-grams.
 func (nib *DynamicNgramIndex) Finish() {
 	for i, v := range nib.index.values {
-		v.slice(nib.cursors[i])
+		v.resize(nib.cursors[i])
 	}
 }
 
@@ -309,7 +328,10 @@ func LoadNgramIndex(dirPath string) *NgramIndex {
 	}
 	ans.values = make([]*indexColumn, len(colIdxPaths))
 	for i := range ans.values {
-		ans.values[i] = loadIndexColumn(colIdxPaths[i])
+		ans.values[i] = newBoundIndexColumn(colIdxPaths[i])
+		if i == 0 {
+			ans.values[i].loadWholeChunk() // TODO
+		}
 	}
 	return ans
 }
