@@ -64,8 +64,9 @@ func Search(basePath string, corpusId string, phrase string) (*SearchResult, err
 // ---------------------------------------------------------
 
 type resultRowsResp struct {
-	Size int        `json:"size"`
-	Rows [][]string `json:"rows"`
+	Size       int        `json:"size"`
+	Rows       [][]string `json:"rows"`
+	SearchTime float64    `json:"searchTime"`
 }
 
 type serviceHandler struct {
@@ -75,7 +76,9 @@ type serviceHandler struct {
 func (s serviceHandler) route(p []string, args map[string][]string) interface{} {
 	switch p[0] {
 	case "search":
+		t1 := time.Now()
 		res, err := Search(s.conf.DataPath, args["corpus"][0], args["q"][0])
+		t2 := time.Since(t1)
 		if err != nil {
 			log.Printf("ERROR: %s", err)
 		}
@@ -83,7 +86,7 @@ func (s serviceHandler) route(p []string, args map[string][]string) interface{} 
 		for i := 0; res.HasNext(); i++ {
 			rows[i] = res.Next()
 		}
-		return &resultRowsResp{Size: res.Size(), Rows: rows}
+		return &resultRowsResp{Size: res.Size(), Rows: rows, SearchTime: t2.Seconds()}
 
 	default:
 		return nil

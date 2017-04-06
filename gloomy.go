@@ -83,14 +83,17 @@ func loadSearchConf(confBasePath string) *gconf.SearchConf {
 
 func searchCLI(confBasePath string, corpus string, query string) {
 	conf := loadSearchConf(confBasePath)
+	t1 := time.Now()
 	ans, err := service.Search(conf.DataPath, corpus, query)
 	if err != nil {
 		log.Printf("Srch error: %s", err)
 	}
+	t2 := time.Since(t1)
 	for i := 0; ans.HasNext(); i++ {
 		v := ans.Next()
 		log.Printf("res[%d]: %s", i, v)
 	}
+	log.Printf("Search time: %s", t2)
 }
 
 func startSearchService(confBasePath string) {
