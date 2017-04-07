@@ -91,7 +91,7 @@ func searchCLI(confBasePath string, corpus string, query string) {
 	t2 := time.Since(t1)
 	for i := 0; ans.HasNext(); i++ {
 		v := ans.Next()
-		log.Printf("res[%d]: %s", i, v)
+		log.Printf("res[%d]: %s (count: %d)", i, v.Ngram, v.Count)
 	}
 	log.Printf("Search time: %s", t2)
 }

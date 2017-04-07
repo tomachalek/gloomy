@@ -12,57 +12,88 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package index represents an n-gram index as a read-only structure
-// providing both low level methods for accessing the internal ngram tree
-// and higher level methods for searching a specific word.
+// This file contains an implementation of IndexColumn which is
+// a storage for n-ngram tree nodes with the same depth (= position
+// within an n-gram)
 
-package index
+package column
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"os"
+	"path/filepath"
 )
 
 const (
 	recNumberSizeBytes = 8
+
+	// ColumnIndexFilenameMask specifies a filename for
+	// an n-gram column (= data for all the variants at
+	// a specific position within an n-gram)
+	columnIndexFilenameMask = "idx_col_%d.idx"
 )
 
-type indexItem struct {
-	index int
-	upTo  int
+// ----------------------------------------------------------------------------
+
+type IndexItem struct {
+	Index int
+	UpTo  int
 }
 
-type indexColumn struct {
-	data     []*indexItem
+type IndexColumn struct {
+	data     []*IndexItem
 	fullSize int
 	dataPath string
 	offset   int
 }
 
-func (ic *indexColumn) size() int {
+func (ic *IndexColumn) Size() int {
 	return len(ic.data)
 }
 
-func (ic *indexColumn) get(idx int) *indexItem {
+func (ic *IndexColumn) Get(idx int) *IndexItem {
 	return ic.data[idx-ic.offset]
 }
 
-func (ic *indexColumn) set(idx int, it *indexItem) {
+func (ic *IndexColumn) Set(idx int, it *IndexItem) {
 	ic.data[idx-ic.offset] = it
 }
 
-func (ic *indexColumn) extend(appendSize int) {
-	ic.data = append(ic.data, make([]*indexItem, appendSize)...)
+func (ic *IndexColumn) Extend(appendSize int) {
+	ic.data = append(ic.data, make([]*IndexItem, appendSize)...)
 }
 
-// slice removes spare array items
-func (ic *indexColumn) resize(rightIdx int) {
+// Resize removes spare array items
+func (ic *IndexColumn) Resize(rightIdx int) {
 	ic.data = ic.data[:rightIdx]
 }
 
-func (ic *indexColumn) loadWholeChunk() {
+func (ic *IndexColumn) Save(colIdx int, dirPath string) error {
+	dstPath := CreateColIdxPath(colIdx, dirPath)
+	f, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0664)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	fw := bufio.NewWriter(f)
+	defer fw.Flush()
+	binary.Write(fw, binary.LittleEndian, int64(len(ic.data)))
+	for _, idx := range ic.data {
+		err = binary.Write(fw, binary.LittleEndian, int64(idx.Index))
+		if err != nil {
+			os.Remove(dstPath) // try to clean but don't care much
+			return err
+		}
+		binary.Write(fw, binary.LittleEndian, int64(idx.UpTo))
+	}
+	ic.dataPath = dstPath
+	return nil
+}
+
+func (ic *IndexColumn) LoadWholeChunk() {
 	f, err := os.Open(ic.dataPath)
 	if err != nil {
 		panic(err)
@@ -78,7 +109,7 @@ func (ic *indexColumn) loadWholeChunk() {
 	}
 	lengthDiff := ic.fullSize - len(ic.data)
 	if lengthDiff > 0 {
-		ic.data = append(ic.data, make([]*indexItem, lengthDiff)...)
+		ic.data = append(ic.data, make([]*IndexItem, lengthDiff)...)
 
 	} else {
 		ic.data = ic.data[:ic.fullSize]
@@ -88,11 +119,11 @@ func (ic *indexColumn) loadWholeChunk() {
 		var index, upTo int64
 		binary.Read(fr, binary.LittleEndian, &index)
 		binary.Read(fr, binary.LittleEndian, &upTo)
-		ic.data[i] = &indexItem{index: int(index), upTo: int(upTo)}
+		ic.data[i] = &IndexItem{Index: int(index), UpTo: int(upTo)}
 	}
 }
 
-func (ic *indexColumn) loadChunk(fromIdx int, toIdx int) {
+func (ic *IndexColumn) LoadChunk(fromIdx int, toIdx int) {
 	f, err := os.Open(ic.dataPath)
 	if err != nil {
 		panic(err)
@@ -122,7 +153,7 @@ func (ic *indexColumn) loadChunk(fromIdx int, toIdx int) {
 	}
 	lengthDiff := newLength - len(ic.data)
 	if lengthDiff > 0 {
-		ic.data = append(ic.data, make([]*indexItem, lengthDiff)...)
+		ic.data = append(ic.data, make([]*IndexItem, lengthDiff)...)
 
 	} else if lengthDiff < 0 {
 		ic.data = ic.data[:newLength]
@@ -131,15 +162,21 @@ func (ic *indexColumn) loadChunk(fromIdx int, toIdx int) {
 		var index, upTo int64
 		binary.Read(indexData, binary.LittleEndian, &index)
 		binary.Read(indexData, binary.LittleEndian, &upTo)
-		ic.data[i] = &indexItem{index: int(index), upTo: int(upTo)}
+		ic.data[i] = &IndexItem{Index: int(index), UpTo: int(upTo)}
 	}
 	ic.offset = fromIdx
 }
 
-func newBoundIndexColumn(dataPath string) *indexColumn {
-	return &indexColumn{data: make([]*indexItem, 0), dataPath: dataPath}
+// ----------------------------------------------------------------------------
+
+func NewBoundIndexColumn(dataPath string) *IndexColumn {
+	return &IndexColumn{data: make([]*IndexItem, 0), dataPath: dataPath}
 }
 
-func newIndexColumn(size int) *indexColumn {
-	return &indexColumn{data: make([]*indexItem, size)}
+func NewIndexColumn(size int) *IndexColumn {
+	return &IndexColumn{data: make([]*IndexItem, size)}
+}
+
+func CreateColIdxPath(colIdx int, dirPath string) string {
+	return filepath.Join(dirPath, fmt.Sprintf(columnIndexFilenameMask, colIdx))
 }
