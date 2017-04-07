@@ -51,6 +51,12 @@ gloomy search corpname phrase
 gloomy search-service 
 ```
 
+Client:
+
+```
+curl -XGET http://localhost:8090/search?corpus=susanne&q=but
+```
+
 
 
 ## Additional functions
