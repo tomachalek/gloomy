@@ -47,11 +47,13 @@ gloomy search corpname phrase
 
 ### HTTP server mode
 
+Start a server:
+
 ```
 gloomy search-service 
 ```
 
-Client:
+Test a client:
 
 ```
 curl -XGET http://localhost:8090/search?corpus=susanne&q=but
