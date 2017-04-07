@@ -50,10 +50,6 @@ type IndexColumn struct {
 	offset   int
 }
 
-func (ic *IndexColumn) GetData() []*IndexItem {
-	return ic.data
-}
-
 func (ic *IndexColumn) Size() int {
 	return len(ic.data)
 }
@@ -93,6 +89,7 @@ func (ic *IndexColumn) Save(colIdx int, dirPath string) error {
 		}
 		binary.Write(fw, binary.LittleEndian, int64(idx.UpTo))
 	}
+	ic.dataPath = dstPath
 	return nil
 }
 
