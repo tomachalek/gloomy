@@ -102,11 +102,6 @@ func (o *OutputFiles) GetSortedIndexTmpPath(mode int) (*os.File, error) {
 	return os.OpenFile(outPath, mode, o.filePerm)
 }
 
-func (o *OutputFiles) OpenIndexForPosition(posIdx int, mode int) (*os.File, error) {
-	indexPath := filepath.Join(o.indexDir, fmt.Sprintf("index-p%d.glm", posIdx))
-	return os.OpenFile(indexPath, mode, o.filePerm)
-}
-
 func (o *OutputFiles) GetIndexDir() string {
 	return o.indexDir
 }
