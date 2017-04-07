@@ -18,13 +18,11 @@
 package index
 
 import (
-	"bufio"
-	"encoding/binary"
 	"fmt"
+	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/wstore"
 	"log"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -33,11 +31,6 @@ const (
 	// MaxNgramSize specifies the largest n-gram
 	// (1-gram, 2-gram,..., n-gram) size Gloomy supports
 	MaxNgramSize = 10
-
-	// ColumnIndexFilenameMask specifies a filename for
-	// an n-gram column (= data for all the variants at
-	// a specific position within an n-gram)
-	ColumnIndexFilenameMask = "idx_col_%d.idx"
 )
 
 type ngramResultItem struct {
@@ -108,7 +101,7 @@ func (nsr *NgramSearchResult) addValue(ngram []int) {
 // NgramIndex is a low-level implementation
 // of a n-gram index.
 type NgramIndex struct {
-	values []*indexColumn
+	values []*column.IndexColumn
 }
 
 // GetInfo returns a human readable overview
@@ -116,7 +109,7 @@ type NgramIndex struct {
 func (n *NgramIndex) GetInfo() string {
 	sizes := make([]string, len(n.values))
 	for i, v := range n.values {
-		sizes[i] = fmt.Sprintf("%d", v.size())
+		sizes[i] = fmt.Sprintf("%d", v.Size())
 	}
 	return fmt.Sprintf("NgramIndex, num cols: %d, sizes %s", len(n.values), strings.Join(sizes, ", "))
 }
@@ -134,33 +127,33 @@ func (n *NgramIndex) findLoadRange(colIdx int, fromRow int, toRow int) (int, int
 	log.Print("FIND load range ", colIdx, fromRow, toRow)
 	leftIdx := fromRow
 	if fromRow > 0 {
-		leftIdx = n.values[colIdx].get(fromRow-1).upTo + 1
+		leftIdx = n.values[colIdx].Get(fromRow-1).UpTo + 1
 	}
-	rightIdx := n.values[colIdx].get(toRow).upTo
+	rightIdx := n.values[colIdx].Get(toRow).UpTo
 	return leftIdx, rightIdx
 }
 
 func (n *NgramIndex) loadData(fromRow int, toRow int) {
 	for i := 0; i < len(n.values)-1; i++ {
 		fromRow, toRow = n.findLoadRange(i, fromRow, toRow)
-		n.values[i+1].loadChunk(fromRow, toRow)
+		n.values[i+1].LoadChunk(fromRow, toRow)
 	}
 }
 
 func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, prevTokens []int, result *NgramSearchResult) {
 	col := n.values[colIdx]
 	for i := fromRow; i <= toRow; i++ {
-		idx := col.get(i)
-		currNgram := append(prevTokens, idx.index)
+		idx := col.Get(i)
+		currNgram := append(prevTokens, idx.Index)
 		if colIdx == len(n.values)-1 {
 			result.addValue(currNgram)
 
 		} else {
 			nextFromIdx := 0
 			if fromRow > 0 {
-				nextFromIdx = col.get(i-1).upTo + 1
+				nextFromIdx = col.Get(i-1).UpTo + 1
 			}
-			nextToIdx := idx.upTo
+			nextToIdx := idx.UpTo
 			n.getNextTokenRecords(colIdx+1, nextFromIdx, nextToIdx, currNgram, result)
 		}
 	}
@@ -169,10 +162,10 @@ func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, pre
 // NewNgramIndex creates a new empty instance of NgramIndex
 func NewNgramIndex(ngramSize int, initialLength int) *NgramIndex {
 	ans := &NgramIndex{
-		values: make([]*indexColumn, ngramSize),
+		values: make([]*column.IndexColumn, ngramSize),
 	}
 	for i := range ans.values {
-		ans.values[i] = newIndexColumn(initialLength)
+		ans.values[i] = column.NewIndexColumn(initialLength)
 	}
 	return ans
 }
@@ -191,10 +184,10 @@ type SearchableIndex struct {
 func (si *SearchableIndex) GetNgramsOf(word string) *NgramSearchResult {
 	var ans *NgramSearchResult
 	w := si.wstore.Find(word)
-	col0Idx := sort.Search(si.index.values[0].size(), func(i int) bool {
-		return si.index.values[0].get(i).index >= w
+	col0Idx := sort.Search(si.index.values[0].Size(), func(i int) bool {
+		return si.index.values[0].Get(i).Index >= w
 	})
-	if col0Idx == si.index.values[0].size() {
+	if col0Idx == si.index.values[0].Size() {
 		return ans
 	}
 	ans = si.index.GetNgramsAt(col0Idx)
@@ -247,16 +240,16 @@ func (nib *DynamicNgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 
 // AddNgram adds a new n-gram represented as an array
 // of indices to the index
-func (nib *DynamicNgramIndex) AddNgram(ngram []int) {
+func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int) {
 	sp := nib.findSplitPosition(ngram)
 	for i := 0; i < len(nib.index.values); i++ {
 		col := nib.index.values[i]
-		if nib.cursors[i] >= col.size()-1 {
-			col.extend(nib.initialLength / 2)
+		if nib.cursors[i] >= col.Size()-1 {
+			col.Extend(nib.initialLength / 2)
 		}
 
 		if i == sp-1 {
-			col.get(nib.cursors[i]).upTo++
+			col.Get(nib.cursors[i]).UpTo++
 
 		} else if i > sp-1 {
 			nib.cursors[i]++
@@ -264,14 +257,14 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int) {
 			if i < len(nib.cursors)-1 {
 				upTo = nib.cursors[i+1] + 1
 			}
-			col.set(nib.cursors[i], &indexItem{index: ngram[i], upTo: upTo})
+			col.Set(nib.cursors[i], &column.IndexItem{Index: ngram[i], UpTo: upTo})
 		}
 	}
 }
 
 func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
 	for i := 0; i < len(ngram); i++ {
-		if nib.cursors[i] == -1 || ngram[i] != nib.index.values[i].get(nib.cursors[i]).index {
+		if nib.cursors[i] == -1 || ngram[i] != nib.index.values[i].Get(nib.cursors[i]).Index {
 			return i
 		}
 	}
@@ -283,34 +276,8 @@ func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
 // for new n-grams.
 func (nib *DynamicNgramIndex) Finish() {
 	for i, v := range nib.index.values {
-		v.resize(nib.cursors[i])
+		v.Resize(nib.cursors[i])
 	}
-}
-
-func createColIdxPath(colIdx int, dirPath string) string {
-	return filepath.Join(dirPath, fmt.Sprintf(ColumnIndexFilenameMask, colIdx))
-}
-
-func (nib *DynamicNgramIndex) saveIndexColumn(colIdx int, dirPath string) error {
-	dstPath := createColIdxPath(colIdx, dirPath)
-	f, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0664)
-	defer f.Close()
-	if err != nil {
-		return err
-	}
-	fw := bufio.NewWriter(f)
-	defer fw.Flush()
-	data := nib.index.values[colIdx].data
-	binary.Write(fw, binary.LittleEndian, int64(len(data)))
-	for _, idx := range data {
-		err = binary.Write(fw, binary.LittleEndian, int64(idx.index))
-		if err != nil {
-			os.Remove(dstPath) // try to clean but don't care much
-			return err
-		}
-		binary.Write(fw, binary.LittleEndian, int64(idx.upTo))
-	}
-	return nil
 }
 
 // LoadNgramIndex loads index data from within
@@ -319,18 +286,18 @@ func LoadNgramIndex(dirPath string) *NgramIndex {
 	colIdxPaths := make([]string, MaxNgramSize)
 	ans := &NgramIndex{}
 	for i := 0; i < MaxNgramSize; i++ {
-		tmp := createColIdxPath(i, dirPath)
+		tmp := column.CreateColIdxPath(i, dirPath)
 		if _, err := os.Stat(tmp); os.IsNotExist(err) {
 			colIdxPaths = colIdxPaths[:i]
 			break
 		}
 		colIdxPaths[i] = tmp
 	}
-	ans.values = make([]*indexColumn, len(colIdxPaths))
+	ans.values = make([]*column.IndexColumn, len(colIdxPaths))
 	for i := range ans.values {
-		ans.values[i] = newBoundIndexColumn(colIdxPaths[i])
+		ans.values[i] = column.NewBoundIndexColumn(colIdxPaths[i])
 		if i == 0 {
-			ans.values[i].loadWholeChunk() // TODO
+			ans.values[i].LoadWholeChunk() // TODO
 		}
 	}
 	return ans
@@ -340,8 +307,8 @@ func LoadNgramIndex(dirPath string) *NgramIndex {
 // within the provided directory.
 func (nib *DynamicNgramIndex) Save(dirPath string) error {
 	var err error
-	for i := range nib.index.values {
-		if err = nib.saveIndexColumn(i, dirPath); err != nil {
+	for i, col := range nib.index.values {
+		if err = col.Save(i, dirPath); err != nil {
 			return err
 		}
 	}

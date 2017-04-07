@@ -137,7 +137,7 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int, saveFile *os.File) er
 			for i, w := range item.ngram {
 				encodedNg[i] = builder.wordDict.GetTokenIndex(w)
 			}
-			builder.nindex.AddNgram(encodedNg)
+			builder.nindex.AddNgram(encodedNg, item.count)
 		}
 	})
 	builder.nindex.Finish()
