@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/wstore"
-	"log"
 	"os"
 	"sort"
 	"strings"
@@ -34,8 +33,14 @@ const (
 )
 
 type ngramResultItem struct {
-	next  *ngramResultItem
-	ngram []int
+	next     *ngramResultItem
+	ngram    []int
+	metadata *column.MetadataItem
+}
+
+type NgramResultValue struct {
+	Ngram    []int
+	Metadata *column.MetadataItem
 }
 
 // NgramSearchResult is a low level result
@@ -75,17 +80,20 @@ func (nsr *NgramSearchResult) HasNext() bool {
 }
 
 // Next returs a following result item.
-func (nsr *NgramSearchResult) Next() []int {
+func (nsr *NgramSearchResult) Next() *NgramResultValue {
 	ans := nsr.curr
 	if ans == nil {
 		return nil
 	}
 	nsr.curr = nsr.curr.next
-	return ans.ngram
+	return &NgramResultValue{
+		Ngram:    ans.ngram,
+		Metadata: ans.metadata,
+	}
 }
 
-func (nsr *NgramSearchResult) addValue(ngram []int) {
-	item := &ngramResultItem{ngram: ngram}
+func (nsr *NgramSearchResult) addValue(ngram []int, metadata *column.MetadataItem) {
+	item := &ngramResultItem{ngram: ngram, metadata: metadata}
 	if nsr.first == nil {
 		nsr.first = item
 	}
@@ -101,7 +109,8 @@ func (nsr *NgramSearchResult) addValue(ngram []int) {
 // NgramIndex is a low-level implementation
 // of a n-gram index.
 type NgramIndex struct {
-	values []*column.IndexColumn
+	values   []*column.IndexColumn
+	metadata *column.MetadataColumn
 }
 
 // GetInfo returns a human readable overview
@@ -124,7 +133,6 @@ func (n *NgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 }
 
 func (n *NgramIndex) findLoadRange(colIdx int, fromRow int, toRow int) (int, int) {
-	log.Print("FIND load range ", colIdx, fromRow, toRow)
 	leftIdx := fromRow
 	if fromRow > 0 {
 		leftIdx = n.values[colIdx].Get(fromRow-1).UpTo + 1
@@ -134,10 +142,13 @@ func (n *NgramIndex) findLoadRange(colIdx int, fromRow int, toRow int) (int, int
 }
 
 func (n *NgramIndex) loadData(fromRow int, toRow int) {
+	left := fromRow
+	right := toRow
 	for i := 0; i < len(n.values)-1; i++ {
-		fromRow, toRow = n.findLoadRange(i, fromRow, toRow)
-		n.values[i+1].LoadChunk(fromRow, toRow)
+		left, right = n.findLoadRange(i, left, right)
+		n.values[i+1].LoadChunk(left, right)
 	}
+	n.metadata.LoadChunk(left, right)
 }
 
 func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, prevTokens []int, result *NgramSearchResult) {
@@ -146,7 +157,7 @@ func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, pre
 		idx := col.Get(i)
 		currNgram := append(prevTokens, idx.Index)
 		if colIdx == len(n.values)-1 {
-			result.addValue(currNgram)
+			result.addValue(currNgram, n.metadata.Get(i))
 
 		} else {
 			nextFromIdx := 0
@@ -162,7 +173,8 @@ func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, pre
 // NewNgramIndex creates a new empty instance of NgramIndex
 func NewNgramIndex(ngramSize int, initialLength int) *NgramIndex {
 	ans := &NgramIndex{
-		values: make([]*column.IndexColumn, ngramSize),
+		values:   make([]*column.IndexColumn, ngramSize),
+		metadata: column.NewMetadataColumn(initialLength),
 	}
 	for i := range ans.values {
 		ans.values[i] = column.NewIndexColumn(initialLength)
@@ -260,6 +272,11 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int) {
 			col.Set(nib.cursors[i], &column.IndexItem{Index: ngram[i], UpTo: upTo})
 		}
 	}
+	lastPos := nib.cursors[len(nib.index.values)-1]
+	if lastPos >= nib.index.metadata.Size()-1 {
+		nib.index.metadata.Extend(nib.initialLength / 2)
+	}
+	nib.index.metadata.Set(lastPos, &column.MetadataItem{Count: uint32(count)})
 }
 
 func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
@@ -278,6 +295,7 @@ func (nib *DynamicNgramIndex) Finish() {
 	for i, v := range nib.index.values {
 		v.Resize(nib.cursors[i])
 	}
+	nib.index.metadata.Resize(nib.cursors[len(nib.index.values)-1])
 }
 
 // LoadNgramIndex loads index data from within
@@ -293,6 +311,7 @@ func LoadNgramIndex(dirPath string) *NgramIndex {
 		}
 		colIdxPaths[i] = tmp
 	}
+	ans.metadata = column.NewBoundMetadataColumn(column.CreateMetadataIdxPath(dirPath))
 	ans.values = make([]*column.IndexColumn, len(colIdxPaths))
 	for i := range ans.values {
 		ans.values[i] = column.NewBoundIndexColumn(colIdxPaths[i])
@@ -312,5 +331,6 @@ func (nib *DynamicNgramIndex) Save(dirPath string) error {
 			return err
 		}
 	}
+	nib.index.metadata.Save(dirPath)
 	return err
 }

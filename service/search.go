@@ -27,6 +27,15 @@ import (
 	"time"
 )
 
+type SearchResultItem struct {
+	Ngram []string `json:"ngram"`
+	Count int      `json:"count"`
+	Flags uint64   `json:"flags"`
+	Date  int      `json:"date"`
+}
+
+// ---------------------------------------------------------------
+
 type SearchResult struct {
 	result *index.NgramSearchResult
 	wdict  *wstore.WordIndex
@@ -40,10 +49,15 @@ func (sr *SearchResult) HasNext() bool {
 	return sr.result.HasNext()
 }
 
-func (sr *SearchResult) Next() []string {
+func (sr *SearchResult) Next() *SearchResultItem {
 	ans := sr.result.Next()
 	if ans != nil {
-		return sr.wdict.DecodeNgram(ans)
+		return &SearchResultItem{
+			Ngram: sr.wdict.DecodeNgram(ans.Ngram),
+			Count: int(ans.Metadata.Count),
+			Flags: ans.Metadata.Flags,
+			Date:  int(ans.Metadata.Date),
+		}
 	}
 	return nil
 }
@@ -64,9 +78,9 @@ func Search(basePath string, corpusId string, phrase string) (*SearchResult, err
 // ---------------------------------------------------------
 
 type resultRowsResp struct {
-	Size       int        `json:"size"`
-	Rows       [][]string `json:"rows"`
-	SearchTime float64    `json:"searchTime"`
+	Size       int                 `json:"size"`
+	Rows       []*SearchResultItem `json:"rows"`
+	SearchTime float64             `json:"searchTime"`
 }
 
 type serviceHandler struct {
@@ -82,7 +96,7 @@ func (s serviceHandler) route(p []string, args map[string][]string) interface{} 
 		if err != nil {
 			log.Printf("ERROR: %s", err)
 		}
-		rows := make([][]string, res.Size())
+		rows := make([]*SearchResultItem, res.Size())
 		for i := 0; res.HasNext(); i++ {
 			rows[i] = res.Next()
 		}
