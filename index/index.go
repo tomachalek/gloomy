@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/wstore"
+	"log"
 	"os"
 	"sort"
 	"strings"
@@ -35,12 +36,14 @@ const (
 type ngramResultItem struct {
 	next     *ngramResultItem
 	ngram    []int
-	metadata *column.MetadataItem
+	count    int
+	metadata []column.AttrVal
 }
 
 type NgramResultValue struct {
 	Ngram    []int
-	Metadata *column.MetadataItem
+	Count    int
+	Metadata []column.AttrVal // TODO use some high level mapping real_attrName->value
 }
 
 // NgramSearchResult is a low level result
@@ -92,8 +95,8 @@ func (nsr *NgramSearchResult) Next() *NgramResultValue {
 	}
 }
 
-func (nsr *NgramSearchResult) addValue(ngram []int, metadata *column.MetadataItem) {
-	item := &ngramResultItem{ngram: ngram, metadata: metadata}
+func (nsr *NgramSearchResult) addValue(ngram []int, count int, metadata []column.AttrVal) {
+	item := &ngramResultItem{ngram: ngram, count: count, metadata: metadata}
 	if nsr.first == nil {
 		nsr.first = item
 	}
@@ -110,7 +113,8 @@ func (nsr *NgramSearchResult) addValue(ngram []int, metadata *column.MetadataIte
 // of a n-gram index.
 type NgramIndex struct {
 	values   []*column.IndexColumn
-	metadata *column.MetadataColumn
+	counts   column.AttrValColumn
+	metadata *column.Metadata
 }
 
 // GetInfo returns a human readable overview
@@ -157,7 +161,8 @@ func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, pre
 		idx := col.Get(i)
 		currNgram := append(prevTokens, idx.Index)
 		if colIdx == len(n.values)-1 {
-			result.addValue(currNgram, n.metadata.Get(i))
+			log.Print(">>>>>> ", n.metadata.Get(i), n.counts.Get(i))
+			result.addValue(currNgram, int(n.counts.Get(i)), n.metadata.Get(i))
 
 		} else {
 			nextFromIdx := 0
@@ -171,10 +176,12 @@ func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, pre
 }
 
 // NewNgramIndex creates a new empty instance of NgramIndex
-func NewNgramIndex(ngramSize int, initialLength int) *NgramIndex {
+func NewNgramIndex(ngramSize int, initialLength int, attrMap map[string]string) *NgramIndex {
+	countsCol := column.NewCountsColumn(initialLength)
 	ans := &NgramIndex{
 		values:   make([]*column.IndexColumn, ngramSize),
-		metadata: column.NewMetadataColumn(initialLength),
+		counts:   countsCol,
+		metadata: column.NewMetadata(attrMap),
 	}
 	for i := range ans.values {
 		ans.values[i] = column.NewIndexColumn(initialLength)
@@ -222,14 +229,14 @@ type DynamicNgramIndex struct {
 }
 
 // NewDynamicNgramIndex creates a new instance of DynamicNgramIndex
-func NewDynamicNgramIndex(ngramSize int, initialLength int) *DynamicNgramIndex {
+func NewDynamicNgramIndex(ngramSize int, initialLength int, attrMap map[string]string) *DynamicNgramIndex {
 	cursors := make([]int, ngramSize)
 	for i := range cursors {
 		cursors[i] = -1
 	}
 	return &DynamicNgramIndex{
 		initialLength: initialLength,
-		index:         NewNgramIndex(ngramSize, initialLength),
+		index:         NewNgramIndex(ngramSize, initialLength, attrMap),
 		cursors:       cursors,
 	}
 }
@@ -276,7 +283,7 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int) {
 	if lastPos >= nib.index.metadata.Size()-1 {
 		nib.index.metadata.Extend(nib.initialLength / 2)
 	}
-	nib.index.metadata.Set(lastPos, &column.MetadataItem{Count: uint32(count)})
+	// TODO nib.index.metadata.Set(lastPos, &column.MetadataItem{Count: uint32(count)})
 }
 
 func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
@@ -311,7 +318,12 @@ func LoadNgramIndex(dirPath string) *NgramIndex {
 		}
 		colIdxPaths[i] = tmp
 	}
-	ans.metadata = column.NewBoundMetadataColumn(column.CreateMetadataIdxPath(dirPath))
+	var err2 error
+	ans.counts, err2 = column.LoadCountsColumn(dirPath)
+	if err2 != nil {
+		panic(err2)
+	}
+	ans.metadata = column.LoadMetadata(dirPath)
 	ans.values = make([]*column.IndexColumn, len(colIdxPaths))
 	for i := range ans.values {
 		ans.values[i] = column.NewBoundIndexColumn(colIdxPaths[i])

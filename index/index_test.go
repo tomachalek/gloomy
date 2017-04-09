@@ -36,7 +36,7 @@ func createSimpleResult() *NgramSearchResult {
 }
 
 func TestNewNgramIndex(t *testing.T) {
-	d := NewNgramIndex(3, 5)
+	d := NewNgramIndex(3, 5, make(map[string]string))
 	assert.Equal(t, 3, len(d.values))
 }
 
@@ -51,7 +51,7 @@ func TestNgramSearchResultIter2(t *testing.T) {
 	tst := make([]int, 3)
 
 	for i := 0; r.HasNext(); i++ {
-		tst[i] = r.Next()[0]
+		tst[i] = r.Next().Ngram[0]
 	}
 	assert.Equal(t, []int{0, 1, 2}, tst)
 }

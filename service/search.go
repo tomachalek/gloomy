@@ -28,10 +28,9 @@ import (
 )
 
 type SearchResultItem struct {
-	Ngram []string `json:"ngram"`
-	Count int      `json:"count"`
-	Flags uint64   `json:"flags"`
-	Date  int      `json:"date"`
+	Ngram []string          `json:"ngram"`
+	Count int               `json:"count"`
+	Args  map[string]string `json:"args"`
 }
 
 // ---------------------------------------------------------------
@@ -54,9 +53,8 @@ func (sr *SearchResult) Next() *SearchResultItem {
 	if ans != nil {
 		return &SearchResultItem{
 			Ngram: sr.wdict.DecodeNgram(ans.Ngram),
-			Count: int(ans.Metadata.Count),
-			Flags: ans.Metadata.Flags,
-			Date:  int(ans.Metadata.Date),
+			Count: ans.Count,
+			// TODO args
 		}
 	}
 	return nil
