@@ -109,7 +109,7 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 		stopWords:    conf.NgramStopStrings,
 		ignoreWords:  conf.NgramIgnoreStrings,
 		wordDict:     NewWordDictBuilder(),
-		nindex:       index.NewDynamicNgramIndex(ngramSize, 10000), // TODO initial size
+		nindex:       index.NewDynamicNgramIndex(ngramSize, 10000, make(map[string]string)), // TODO initial size
 	}
 }
 

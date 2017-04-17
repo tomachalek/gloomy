@@ -34,6 +34,7 @@ type NgramNode struct {
 	right *NgramNode
 	ngram []string
 	count int
+	args  []uint8
 }
 
 func (n *NgramNode) GetCount() int {
@@ -83,7 +84,7 @@ func (n *NgramList) Add(ngram []string) {
 					item = item.left
 
 				} else {
-					item.left = &NgramNode{ngram: ngram, count: 1}
+					item.left = &NgramNode{ngram: ngram, count: 1} // TODO args
 					n.numNodes++
 					item = nil // stop the iteration
 				}
@@ -92,7 +93,7 @@ func (n *NgramList) Add(ngram []string) {
 					item = item.right
 
 				} else {
-					item.right = &NgramNode{ngram: ngram, count: 1}
+					item.right = &NgramNode{ngram: ngram, count: 1} // TODO args
 					n.numNodes++
 					item = nil // stop the iteration
 				}
