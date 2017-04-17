@@ -76,7 +76,7 @@ func TestMethodsColumn8Resize(t *testing.T) {
 	col.Resize(2)
 
 	assert.Equal(t, 2, col.Size())
-	assert.Equal(t, 2, col.StoredSize())
+	assert.Equal(t, 10, col.StoredSize())
 }
 
 func TestMethodsColumn8ResizeOverflow(t *testing.T) {
@@ -113,7 +113,7 @@ func TestMethodsColumn8Save(t *testing.T) {
 	binary.Read(f, binary.LittleEndian, &dSize)
 	assert.Equal(t, int64(10), dSize)
 	binary.Read(f, binary.LittleEndian, colTypeEtc)
-	assert.Equal(t, int8(1), colTypeEtc[0])
+	assert.Equal(t, int8(8), colTypeEtc[0])
 }
 
 func TestColumn8LoadChunk(t *testing.T) {

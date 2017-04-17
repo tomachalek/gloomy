@@ -157,7 +157,7 @@ func saveAttrColumn(col AttrValColumn, dirPath string) (string, error) {
 	binary.Write(fw, binary.LittleEndian, int64(col.Size()))
 
 	// write item length in bytes and some spare zeros
-	binary.Write(fw, binary.LittleEndian, []int8{int8(col.UnitSize()), 0, 0, 0, 0, 0, 0, 0})
+	binary.Write(fw, binary.LittleEndian, []int8{int8(col.UnitSize() * 8), 0, 0, 0, 0, 0, 0, 0})
 
 	// write data
 	col.ForEach(func(i int, v interface{}) {
@@ -195,7 +195,7 @@ func loadAttrColumnChunk(col AttrValColumn, fromIdx int, toIdx int) int {
 		col.Resize(newLength)
 	}
 	for i := fromIdx; i <= toIdx; i++ {
-		col.ReadItem(indexData, i)
+		col.ReadItem(indexData, i-fromIdx)
 	}
 	return fromIdx
 }
@@ -237,7 +237,6 @@ func (c *Column8) UnitSize() int {
 // Resize removes spare array items
 func (c *Column8) Resize(rightIdx int) {
 	c.data = c.data[:rightIdx]
-	c.fullSize = rightIdx
 }
 
 func (c *Column8) Extend(appendSize int) {
@@ -308,13 +307,12 @@ func (c *Column32) StoredSize() int {
 }
 
 func (c *Column32) UnitSize() int {
-	return 8
+	return 4
 }
 
 // Resize removes spare array items
 func (c *Column32) Resize(rightIdx int) {
 	c.data = c.data[:rightIdx]
-	c.fullSize = rightIdx
 }
 
 func (c *Column32) Extend(appendSize int) {
@@ -367,6 +365,8 @@ func NewMetadataColumn(ident string, typeIdent string, size int) (AttrValColumn,
 	}
 }
 
+//
+// TODO rename to NewBoundMetadataColumn
 func LoadMetadataColumn(ident string, dirPath string) (AttrValColumn, error) {
 	f, err := os.Open(createColumnPath(ident, dirPath))
 	if err != nil {
@@ -376,19 +376,17 @@ func LoadMetadataColumn(ident string, dirPath string) (AttrValColumn, error) {
 
 	var colLen int64
 	binary.Read(f, binary.LittleEndian, &colLen)
-
 	flags := make([]int8, 8)
 	binary.Read(f, binary.LittleEndian, flags)
-
 	var ans AttrValColumn
 	var ansErr error
 	switch flags[0] {
-	case 1:
+	case 8:
 		ans = &Column8{fullSize: int(colLen), dataPath: f.Name()}
-	case 4:
+	case 32:
 		ans = &Column32{fullSize: int(colLen), dataPath: f.Name()}
 	default:
-		ansErr = fmt.Errorf("Cannot load metadata column, unsupported item length %d", colLen)
+		ansErr = fmt.Errorf("Cannot load metadata column, unsupported item length %d", flags[0])
 	}
 	return ans, ansErr
 }

@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/wstore"
-	"log"
 	"os"
 	"sort"
 	"strings"
@@ -91,6 +90,7 @@ func (nsr *NgramSearchResult) Next() *NgramResultValue {
 	nsr.curr = nsr.curr.next
 	return &NgramResultValue{
 		Ngram:    ans.ngram,
+		Count:    ans.count,
 		Metadata: ans.metadata,
 	}
 }
@@ -152,6 +152,7 @@ func (n *NgramIndex) loadData(fromRow int, toRow int) {
 		left, right = n.findLoadRange(i, left, right)
 		n.values[i+1].LoadChunk(left, right)
 	}
+	n.counts.LoadChunk(left, right)
 	n.metadata.LoadChunk(left, right)
 }
 
@@ -161,7 +162,6 @@ func (n *NgramIndex) getNextTokenRecords(colIdx int, fromRow int, toRow int, pre
 		idx := col.Get(i)
 		currNgram := append(prevTokens, idx.Index)
 		if colIdx == len(n.values)-1 {
-			log.Print(">>>>>> ", n.metadata.Get(i), n.counts.Get(i))
 			result.addValue(currNgram, int(n.counts.Get(i)), n.metadata.Get(i))
 
 		} else {
@@ -280,10 +280,14 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int) {
 		}
 	}
 	lastPos := nib.cursors[len(nib.index.values)-1]
+	if lastPos >= nib.index.counts.Size()-1 {
+		nib.index.counts.Extend(nib.initialLength / 2)
+	}
+	nib.index.counts.Set(lastPos, column.AttrVal(count))
 	if lastPos >= nib.index.metadata.Size()-1 {
 		nib.index.metadata.Extend(nib.initialLength / 2)
 	}
-	// TODO nib.index.metadata.Set(lastPos, &column.MetadataItem{Count: uint32(count)})
+	// TODO add metadata
 }
 
 func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
@@ -343,6 +347,7 @@ func (nib *DynamicNgramIndex) Save(dirPath string) error {
 			return err
 		}
 	}
+	nib.index.counts.Save(dirPath)
 	nib.index.metadata.Save(dirPath)
 	return err
 }
