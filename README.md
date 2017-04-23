@@ -25,6 +25,11 @@ where *config.json* looks like this:
     "ngramStopStrings": [".", ":"],
     "ngramIgnoreStrings": ["\"", ","],
     "outDirectory": "/path/to/an/output/directory"
+    "args": {
+      "doc.file": "col8",
+      "doc.n": "col8",
+      "head.type": "col8"
+  }
 }
 ```
 
