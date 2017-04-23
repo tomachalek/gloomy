@@ -15,9 +15,9 @@
 package builder
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/tomachalek/gloomy/index/column"
+	"testing"
 )
 
 func TestNgramsCmp(t *testing.T) {
@@ -50,20 +50,20 @@ func TestEmptyNgramsCmp(t *testing.T) {
 func TestNgramListAdd(t *testing.T) {
 	nl := NgramList{}
 	v := []string{"foo", "bar"}
-	nl.Add(v)
+	nl.Add(v, []column.AttrVal{})
 	assert.Equal(t, 0, ngramsCmp(nl.root.ngram, v))
 }
 
 func TestNgramListAddMulti(t *testing.T) {
 	n := NgramList{}
 	v1 := []string{"foo", "bar"}
-	n.Add(v1)
+	n.Add(v1, []column.AttrVal{})
 	v2 := []string{"boo", "bar"}
-	n.Add(v2)
+	n.Add(v2, []column.AttrVal{})
 	v3 := []string{"moo", "bar"}
-	n.Add(v3)
+	n.Add(v3, []column.AttrVal{})
 	v4 := []string{"zoo", "bar"}
-	n.Add(v4)
+	n.Add(v4, []column.AttrVal{})
 
 	assert.Equal(t, v1[0], n.root.ngram[0])
 	assert.Equal(t, v2[0], n.root.left.ngram[0])

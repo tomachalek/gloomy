@@ -57,8 +57,9 @@ func LoadSearchConf(confPath string) *SearchConf {
 // ---------------------------------------------------------
 
 type IndexBuilderConf struct {
-	OutDirectory string `json:"outDirectory"`
-	MinNgramFreq int    `json:"minNgramFreq"`
+	OutDirectory string            `json:"outDirectory"`
+	MinNgramFreq int               `json:"minNgramFreq"`
+	Args         map[string]string `json:"args"`
 	vertical.ParserConf
 }
 
