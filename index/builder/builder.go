@@ -17,6 +17,7 @@ package builder
 import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index"
+	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/vertical"
 	"log"
@@ -78,7 +79,14 @@ func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
 			b.buffer.AddToken(wordLC)
 			b.wordDict.AddToken(wordLC)
 			if b.buffer.IsValid() {
-				b.ngramList.Add(b.buffer.GetValue())
+				meta := make([]column.AttrVal, b.nindex.Metadata().NumCols())
+				b.nindex.Metadata().ForEachArg(func(i int, ad *column.ArgsDict, col column.AttrValColumn) {
+					if _, ok := vline.StructAttrs[ad.Name()]; ok {
+						idx := ad.AddValue(vline.StructAttrs[ad.Name()])
+						meta[i] = column.AttrVal(idx)
+					}
+				})
+				b.ngramList.Add(b.buffer.GetValue(), meta)
 			}
 		}
 
@@ -109,7 +117,7 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 		stopWords:    conf.NgramStopStrings,
 		ignoreWords:  conf.NgramIgnoreStrings,
 		wordDict:     NewWordDictBuilder(),
-		nindex:       index.NewDynamicNgramIndex(ngramSize, 10000, make(map[string]string)), // TODO initial size
+		nindex:       index.NewDynamicNgramIndex(ngramSize, 10000, conf.Args), // TODO initial size
 	}
 }
 
@@ -121,7 +129,7 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int) error {
 			for i, w := range item.ngram {
 				encodedNg[i] = builder.wordDict.GetTokenIndex(w)
 			}
-			builder.nindex.AddNgram(encodedNg, item.count)
+			builder.nindex.AddNgram(encodedNg, item.count, item.args)
 		}
 	})
 	builder.nindex.Finish()

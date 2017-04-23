@@ -69,8 +69,19 @@ type AttrValColumn interface {
 }
 
 type Metadata struct {
+	dicts ArgsList
 	cols  []AttrValColumn
-	attrs map[string]int
+	attrs map[string]int // an index to cols
+}
+
+func (m *Metadata) ForEachArg(fn func(i int, v *ArgsDict, col AttrValColumn)) {
+	for i := 0; i < len(m.dicts); i++ { // we expect len(dicts) == len(cols)
+		fn(i, m.dicts[i], m.cols[i])
+	}
+}
+
+func (m *Metadata) NumCols() int {
+	return len(m.dicts)
 }
 
 func (m *Metadata) Get(idx int) []AttrVal {
@@ -79,6 +90,12 @@ func (m *Metadata) Get(idx int) []AttrVal {
 		ans[i] = v.Get(idx)
 	}
 	return ans
+}
+
+func (m *Metadata) Set(idx int, val []AttrVal) {
+	for i := 0; i < len(m.cols); i++ {
+		m.cols[i].Set(idx, val[i])
+	}
 }
 
 func (m *Metadata) LoadChunk(fromIdx int, toIdx int) {
@@ -107,8 +124,14 @@ func (m *Metadata) Resize(rightIdx int) {
 }
 
 func (m *Metadata) Save(dirPath string) error {
-	for _, v := range m.cols {
-		err := v.Save(dirPath)
+	for _, avc := range m.cols {
+		err := avc.Save(dirPath)
+		if err != nil {
+			return err
+		}
+	}
+	for _, d := range m.dicts {
+		err := d.Save(dirPath)
 		if err != nil {
 			return err
 		}
@@ -118,6 +141,7 @@ func (m *Metadata) Save(dirPath string) error {
 
 func NewMetadata(attrs map[string]string) *Metadata {
 	cols := make([]AttrValColumn, len(attrs))
+	dicts := make([]*ArgsDict, len(attrs))
 	attrMap := make(map[string]int)
 	i := 0
 	var err error
@@ -126,9 +150,11 @@ func NewMetadata(attrs map[string]string) *Metadata {
 		if err != nil {
 			panic(err)
 		}
+		dicts[i] = NewArgsDict(k, v)
 		attrMap[k] = i
+		i++
 	}
-	return &Metadata{cols: cols, attrs: attrMap}
+	return &Metadata{cols: cols, attrs: attrMap, dicts: dicts}
 }
 
 func LoadMetadata(dirPath string) *Metadata {
@@ -263,6 +289,7 @@ func (c *Column8) Save(dirPath string) error {
 		return err
 	}
 	c.dataPath = dstPath
+	log.Printf("Saved metadata %s (col8)", c.name)
 	return nil
 }
 
@@ -335,6 +362,7 @@ func (c *Column32) Seek(file *os.File, numPos int) {
 
 func (c *Column32) Save(dirPath string) error {
 	dstPath, err := saveAttrColumn(c, dirPath)
+	log.Printf("Saved metadata %s (col32)", c.name)
 	if err != nil {
 		return err
 	}

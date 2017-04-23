@@ -32,8 +32,9 @@ const (
 )
 
 var (
-	tagSrchRegexp = regexp.MustCompile("^<([\\w]+)(\\s*[^>]*?|)/?>$")
-	attrValRegexp = regexp.MustCompile("(\\w+)=\"([^\"]+)\"")
+	tagSrchRegexp  = regexp.MustCompile("^<([\\w]+)(\\s*[^>]*?|)/?>$")
+	attrValRegexp  = regexp.MustCompile("(\\w+)=\"([^\"]+)\"")
+	closeTagRegexp = regexp.MustCompile("</([^>]+)\\s*>")
 )
 
 // --------------------------------------------------------
@@ -126,15 +127,16 @@ func parseAttrVal(src string) map[string]string {
 	return ans
 }
 
-func parseLine(line string, elmStack *Stack) *Token {
+func parseLine(line string, elmStack ElmParser) *Token {
 	var meta *VerticalMetaLine
 	switch {
 	case isOpenElement(line):
 		srch := tagSrchRegexp.FindStringSubmatch(line)
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
-		elmStack.Push(meta)
+		elmStack.Begin(meta)
 	case isCloseElement(line):
-		elmStack.Pop()
+		srch := closeTagRegexp.FindStringSubmatch(line)
+		elmStack.End(srch[1])
 	case isSelfCloseElement(line):
 		srch := tagSrchRegexp.FindStringSubmatch(line)
 		meta = &VerticalMetaLine{Name: srch[1], Attrs: parseAttrVal(srch[2])}
@@ -191,7 +193,7 @@ func ParseVerticalFile(conf *ParserConf, lproc LineProcessor) {
 	}
 	brd := bufio.NewScanner(rd)
 
-	stack := NewStack()
+	stack := NewStructAttrs() // TODO either StructAttrs or Elm stack (based on config)
 
 	ch := make(chan []*Token)
 	chunk := make([]*Token, channelChunkSize)

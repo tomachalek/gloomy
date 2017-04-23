@@ -14,6 +14,17 @@
 
 package vertical
 
+import (
+	"log"
+)
+
+type ElmParser interface {
+	Begin(value *VerticalMetaLine)
+	End(name string) *VerticalMetaLine
+	GetAttrs() map[string]string
+	Size() int
+}
+
 type stackItem struct {
 	value *VerticalMetaLine
 	prev  *stackItem
@@ -34,21 +45,19 @@ func NewStack() *Stack {
 }
 
 // Push adds an item at the beginning
-func (s *Stack) Push(value *VerticalMetaLine) {
+func (s *Stack) Begin(value *VerticalMetaLine) {
 	item := &stackItem{value: value, prev: s.last}
 	s.last = item
 }
 
 // Pop takes the first element
-func (s *Stack) Pop() *VerticalMetaLine {
+func (s *Stack) End(name string) *VerticalMetaLine {
+	if name != s.last.value.Name {
+		log.Printf("Tag nesting problem. Expected: %s, found %s", s.last.value.Name, name)
+	}
 	item := s.last
 	s.last = item.prev
 	return item.value
-}
-
-// Peek returns the first element (without removing)
-func (s *Stack) Peek() *VerticalMetaLine {
-	return s.last.value
 }
 
 // Size returns a size of the stack

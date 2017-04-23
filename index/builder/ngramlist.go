@@ -14,6 +14,10 @@
 
 package builder
 
+import (
+	"github.com/tomachalek/gloomy/index/column"
+)
+
 func ngramsCmp(n1 []string, n2 []string) int {
 	if len(n1) != len(n2) {
 		panic("Cannot compare ngrams of different sizes")
@@ -34,7 +38,7 @@ type NgramNode struct {
 	right *NgramNode
 	ngram []string
 	count int
-	args  []uint8
+	args  []column.AttrVal
 }
 
 func (n *NgramNode) GetCount() int {
@@ -70,9 +74,9 @@ func (n *NgramList) Size() int {
 	return n.numNodes
 }
 
-func (n *NgramList) Add(ngram []string) {
+func (n *NgramList) Add(ngram []string, metadata []column.AttrVal) {
 	if n.root == nil {
-		n.root = &NgramNode{ngram: ngram, count: 1}
+		n.root = &NgramNode{ngram: ngram, count: 1, args: metadata}
 		n.numNodes = 1
 
 	} else {
@@ -84,7 +88,7 @@ func (n *NgramList) Add(ngram []string) {
 					item = item.left
 
 				} else {
-					item.left = &NgramNode{ngram: ngram, count: 1} // TODO args
+					item.left = &NgramNode{ngram: ngram, count: 1, args: metadata}
 					n.numNodes++
 					item = nil // stop the iteration
 				}
@@ -93,7 +97,7 @@ func (n *NgramList) Add(ngram []string) {
 					item = item.right
 
 				} else {
-					item.right = &NgramNode{ngram: ngram, count: 1} // TODO args
+					item.right = &NgramNode{ngram: ngram, count: 1, args: metadata}
 					n.numNodes++
 					item = nil // stop the iteration
 				}

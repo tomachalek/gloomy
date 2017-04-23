@@ -234,6 +234,7 @@ func NewDynamicNgramIndex(ngramSize int, initialLength int, attrMap map[string]s
 	for i := range cursors {
 		cursors[i] = -1
 	}
+
 	return &DynamicNgramIndex{
 		initialLength: initialLength,
 		index:         NewNgramIndex(ngramSize, initialLength, attrMap),
@@ -252,6 +253,10 @@ func (nib *DynamicNgramIndex) GetInfo() string {
 	return nib.index.GetInfo()
 }
 
+func (nib *DynamicNgramIndex) Metadata() *column.Metadata {
+	return nib.index.metadata
+}
+
 // GetNgramsAt returns all the ngrams where the first word index equals position
 func (nib *DynamicNgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 	return nib.index.GetNgramsAt(position)
@@ -259,7 +264,7 @@ func (nib *DynamicNgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 
 // AddNgram adds a new n-gram represented as an array
 // of indices to the index
-func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int) {
+func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int, metadata []column.AttrVal) {
 	sp := nib.findSplitPosition(ngram)
 	for i := 0; i < len(nib.index.values); i++ {
 		col := nib.index.values[i]
@@ -287,6 +292,7 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int) {
 	if lastPos >= nib.index.metadata.Size()-1 {
 		nib.index.metadata.Extend(nib.initialLength / 2)
 	}
+	nib.index.metadata.Set(lastPos, metadata)
 	// TODO add metadata
 }
 
