@@ -62,7 +62,7 @@ gloomy search-service
 Test a client:
 
 ```
-curl -XGET http://localhost:8090/search?corpus=susanne&q=but
+curl -XGET http://localhost:8090/search?corpus=susanne&q=from&attrs=doc.file&attrs=doc.n
 ```
 
 
