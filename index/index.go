@@ -36,13 +36,13 @@ type ngramResultItem struct {
 	next     *ngramResultItem
 	ngram    []int
 	count    int
-	metadata []column.AttrVal
+	metadata []string
 }
 
 type NgramResultValue struct {
 	Ngram    []int
 	Count    int
-	Metadata []column.AttrVal // TODO use some high level mapping real_attrName->value
+	Metadata []string
 }
 
 // NgramSearchResult is a low level result
@@ -95,7 +95,7 @@ func (nsr *NgramSearchResult) Next() *NgramResultValue {
 	}
 }
 
-func (nsr *NgramSearchResult) addValue(ngram []int, count int, metadata []column.AttrVal) {
+func (nsr *NgramSearchResult) addValue(ngram []int, count int, metadata []string) {
 	item := &ngramResultItem{ngram: ngram, count: count, metadata: metadata}
 	if nsr.first == nil {
 		nsr.first = item
@@ -114,7 +114,7 @@ func (nsr *NgramSearchResult) addValue(ngram []int, count int, metadata []column
 type NgramIndex struct {
 	values   []*column.IndexColumn
 	counts   column.AttrValColumn
-	metadata *column.Metadata
+	metadata *column.MetadataReader
 }
 
 // GetInfo returns a human readable overview
@@ -181,7 +181,7 @@ func NewNgramIndex(ngramSize int, initialLength int, attrMap map[string]string) 
 	ans := &NgramIndex{
 		values:   make([]*column.IndexColumn, ngramSize),
 		counts:   countsCol,
-		metadata: column.NewMetadata(attrMap),
+		metadata: nil,
 	}
 	for i := range ans.values {
 		ans.values[i] = column.NewIndexColumn(initialLength)
@@ -223,9 +223,10 @@ func OpenSearchableIndex(index *NgramIndex, wstore *wstore.WordIndex) *Searchabl
 
 // DynamicNgramIndex allows adding items to the index
 type DynamicNgramIndex struct {
-	index         *NgramIndex
-	cursors       []int
-	initialLength int
+	index          *NgramIndex
+	cursors        []int
+	initialLength  int
+	metadataWriter *column.MetadataWriter
 }
 
 // NewDynamicNgramIndex creates a new instance of DynamicNgramIndex
@@ -236,9 +237,10 @@ func NewDynamicNgramIndex(ngramSize int, initialLength int, attrMap map[string]s
 	}
 
 	return &DynamicNgramIndex{
-		initialLength: initialLength,
-		index:         NewNgramIndex(ngramSize, initialLength, attrMap),
-		cursors:       cursors,
+		initialLength:  initialLength,
+		index:          NewNgramIndex(ngramSize, initialLength, attrMap),
+		cursors:        cursors,
+		metadataWriter: column.NewMetadataWriter(attrMap),
 	}
 }
 
@@ -253,8 +255,8 @@ func (nib *DynamicNgramIndex) GetInfo() string {
 	return nib.index.GetInfo()
 }
 
-func (nib *DynamicNgramIndex) Metadata() *column.Metadata {
-	return nib.index.metadata
+func (nib *DynamicNgramIndex) MetadataWriter() *column.MetadataWriter {
+	return nib.metadataWriter
 }
 
 // GetNgramsAt returns all the ngrams where the first word index equals position
@@ -289,10 +291,10 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int, metadata []column
 		nib.index.counts.Extend(nib.initialLength / 2)
 	}
 	nib.index.counts.Set(lastPos, column.AttrVal(count))
-	if lastPos >= nib.index.metadata.Size()-1 {
-		nib.index.metadata.Extend(nib.initialLength / 2)
+	if lastPos >= nib.metadataWriter.Size()-1 {
+		nib.metadataWriter.Extend(nib.initialLength / 2)
 	}
-	nib.index.metadata.Set(lastPos, metadata)
+	nib.metadataWriter.Set(lastPos, metadata)
 	// TODO add metadata
 }
 
@@ -312,12 +314,28 @@ func (nib *DynamicNgramIndex) Finish() {
 	for i, v := range nib.index.values {
 		v.Resize(nib.cursors[i])
 	}
-	nib.index.metadata.Resize(nib.cursors[len(nib.index.values)-1])
+	nib.metadataWriter.Resize(nib.cursors[len(nib.index.values)-1])
 }
+
+// Save stores current index data to bunch of files
+// within the provided directory.
+func (nib *DynamicNgramIndex) Save(dirPath string) error {
+	var err error
+	for i, col := range nib.index.values {
+		if err = col.Save(i, dirPath); err != nil {
+			return err
+		}
+	}
+	nib.index.counts.Save(dirPath)
+	nib.metadataWriter.Save(dirPath)
+	return err
+}
+
+// ---------------------------------------------------------------------
 
 // LoadNgramIndex loads index data from within
 // a specified directory.
-func LoadNgramIndex(dirPath string) *NgramIndex {
+func LoadNgramIndex(dirPath string, attrs []string) *NgramIndex {
 	colIdxPaths := make([]string, MaxNgramSize)
 	ans := &NgramIndex{}
 	for i := 0; i < MaxNgramSize; i++ {
@@ -333,7 +351,11 @@ func LoadNgramIndex(dirPath string) *NgramIndex {
 	if err2 != nil {
 		panic(err2)
 	}
-	ans.metadata = column.LoadMetadata(dirPath)
+	var err3 error
+	ans.metadata, err3 = column.LoadMetadataReader(dirPath, attrs)
+	if err3 != nil {
+		panic(err3)
+	}
 	ans.values = make([]*column.IndexColumn, len(colIdxPaths))
 	for i := range ans.values {
 		ans.values[i] = column.NewBoundIndexColumn(colIdxPaths[i])
@@ -342,18 +364,4 @@ func LoadNgramIndex(dirPath string) *NgramIndex {
 		}
 	}
 	return ans
-}
-
-// Save stores current index data to bunch of files
-// within the provided directory.
-func (nib *DynamicNgramIndex) Save(dirPath string) error {
-	var err error
-	for i, col := range nib.index.values {
-		if err = col.Save(i, dirPath); err != nil {
-			return err
-		}
-	}
-	nib.index.counts.Save(dirPath)
-	nib.index.metadata.Save(dirPath)
-	return err
 }

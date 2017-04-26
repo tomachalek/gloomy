@@ -28,9 +28,9 @@ import (
 )
 
 type SearchResultItem struct {
-	Ngram []string          `json:"ngram"`
-	Count int               `json:"count"`
-	Args  map[string]string `json:"args"`
+	Ngram []string `json:"ngram"`
+	Count int      `json:"count"`
+	Args  []string `json:"args"`
 }
 
 // ---------------------------------------------------------------
@@ -54,15 +54,15 @@ func (sr *SearchResult) Next() *SearchResultItem {
 		return &SearchResultItem{
 			Ngram: sr.wdict.DecodeNgram(ans.Ngram),
 			Count: ans.Count,
-			// TODO args
+			Args:  ans.Metadata,
 		}
 	}
 	return nil
 }
 
-func Search(basePath string, corpusId string, phrase string) (*SearchResult, error) {
+func Search(basePath string, corpusId string, phrase string, attrs []string) (*SearchResult, error) {
 	fullPath := filepath.Join(basePath, corpusId)
-	gindex := index.LoadNgramIndex(fullPath)
+	gindex := index.LoadNgramIndex(fullPath, attrs)
 	wdict, err := wstore.LoadWordDict(fullPath)
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (s serviceHandler) route(p []string, args map[string][]string) interface{} 
 	switch p[0] {
 	case "search":
 		t1 := time.Now()
-		res, err := Search(s.conf.DataPath, args["corpus"][0], args["q"][0])
+		res, err := Search(s.conf.DataPath, args["corpus"][0], args["q"][0], args["attrs"])
 		t2 := time.Since(t1)
 		if err != nil {
 			log.Printf("ERROR: %s", err)
@@ -128,12 +128,14 @@ func (s serviceHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // Serve starts a simple HTTP server
 func Serve(conf *gconf.SearchConf) {
 	h := serviceHandler{conf: conf}
+	addr := fmt.Sprintf("%s:%d", conf.ServerAddress, conf.ServerPort)
 	s := &http.Server{
-		Addr:           fmt.Sprintf("%s:%d", conf.ServerAddress, conf.ServerPort),
+		Addr:           addr,
 		Handler:        h,
 		ReadTimeout:    20 * time.Second,
 		WriteTimeout:   5 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
+	log.Printf("Listening on %s", addr)
 	log.Fatal(s.ListenAndServe())
 }

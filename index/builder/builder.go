@@ -79,8 +79,8 @@ func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
 			b.buffer.AddToken(wordLC)
 			b.wordDict.AddToken(wordLC)
 			if b.buffer.IsValid() {
-				meta := make([]column.AttrVal, b.nindex.Metadata().NumCols())
-				b.nindex.Metadata().ForEachArg(func(i int, ad *column.ArgsDict, col column.AttrValColumn) {
+				meta := make([]column.AttrVal, b.nindex.MetadataWriter().NumCols())
+				b.nindex.MetadataWriter().ForEachArg(func(i int, ad *column.ArgsDictWriter, col column.AttrValColumn) {
 					if _, ok := vline.StructAttrs[ad.Name()]; ok {
 						idx := ad.AddValue(vline.StructAttrs[ad.Name()])
 						meta[i] = column.AttrVal(idx)
