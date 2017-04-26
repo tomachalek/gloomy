@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/tomachalek/gloomy/index/builder"
@@ -81,17 +82,17 @@ func loadSearchConf(confBasePath string) *gconf.SearchConf {
 	return gconf.LoadSearchConf(confBasePath)
 }
 
-func searchCLI(confBasePath string, corpus string, query string) {
+func searchCLI(confBasePath string, corpus string, query string, attrs []string) {
 	conf := loadSearchConf(confBasePath)
 	t1 := time.Now()
-	ans, err := service.Search(conf.DataPath, corpus, query)
+	ans, err := service.Search(conf.DataPath, corpus, query, attrs)
 	if err != nil {
 		log.Printf("Srch error: %s", err)
 	}
 	t2 := time.Since(t1)
 	for i := 0; ans.HasNext(); i++ {
 		v := ans.Next()
-		log.Printf("res[%d]: %s (count: %d)", i, v.Ngram, v.Count)
+		log.Printf("res[%d]: %s (count: %d, meta: %s)", i, v.Ngram, v.Count, v.Args)
 	}
 	log.Printf("Search time: %s", t2)
 }
@@ -104,7 +105,9 @@ func startSearchService(confBasePath string) {
 func main() {
 	ngramSize := flag.Int("ngram-size", 2, "N-gram size, 2: bigram (default), ...")
 	srchConfPath := flag.String("conf-path", "", "Path to the gloomy.conf (by default, working dir is used")
+	metadataAttrs := flag.String("attrs", "", "Metadata attributes separated by comma")
 	flag.Parse()
+
 	if len(flag.Args()) == 0 {
 		fmt.Println("Missing action, try -h for help")
 		os.Exit(1)
@@ -125,7 +128,7 @@ func main() {
 			if flag.Arg(1) == "" || flag.Arg(2) == "" {
 				log.Fatal("Missing argument (both corpus and query must be specified)")
 			}
-			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2))
+			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), strings.Split(*metadataAttrs, ","))
 		default:
 			panic("Unknown action")
 		}
