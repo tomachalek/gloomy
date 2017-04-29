@@ -19,7 +19,9 @@
 package column
 
 // MetadataWriter is used for writing metadata attributes
-// during indexing.
+// during indexing. It collects individual metadata
+// columns into a single object providing similar methods
+// (Get, Set, Extend, Size, Resize, Save).
 type MetadataWriter struct {
 	dicts ArgsWriterList
 	cols  []AttrValColumn
@@ -62,9 +64,9 @@ func (mw *MetadataWriter) Size() int {
 	return 0
 }
 
-func (mw *MetadataWriter) Resize(rightIdx int) {
+func (mw *MetadataWriter) Shrink(rightIdx int) {
 	for _, v := range mw.cols {
-		v.Resize(rightIdx)
+		v.Shrink(rightIdx)
 	}
 }
 
@@ -103,9 +105,11 @@ func NewMetadataWriter(attrs map[string]string) *MetadataWriter {
 // -----------------------------------------------------------------------
 
 // MetadataReader is used for reading indexed
-// metadata attributes when in search mode
+// metadata attributes when in search mode.
+// It collects individual metadata columns
+// into a single object.
 type MetadataReader struct {
-	dicts ArgsList
+	dicts ArgsReaderList
 	cols  []AttrValColumn
 }
 

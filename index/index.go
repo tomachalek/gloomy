@@ -312,9 +312,9 @@ func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
 // for new n-grams.
 func (nib *DynamicNgramIndex) Finish() {
 	for i, v := range nib.index.values {
-		v.Resize(nib.cursors[i])
+		v.Shrink(nib.cursors[i])
 	}
-	nib.metadataWriter.Resize(nib.cursors[len(nib.index.values)-1])
+	nib.metadataWriter.Shrink(nib.cursors[len(nib.index.values)-1])
 }
 
 // Save stores current index data to bunch of files

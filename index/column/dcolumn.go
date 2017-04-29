@@ -58,7 +58,14 @@ type AttrValColumn interface {
 	Set(idx int, it AttrVal)
 	Save(dirPath string) error
 	Extend(appendSize int)
-	Resize(rightIdx int)
+
+	// Shrink makes the column size
+	// smaller. In case the provided
+	// rightIdx argument is larger then
+	// actual size the function is
+	// expect to panic (even if a free
+	// memory capacity is available)
+	Shrink(rightIdx int)
 
 	Size() int
 
@@ -140,7 +147,7 @@ func loadAttrColumnChunk(col AttrValColumn, fromIdx int, toIdx int) int {
 		col.Extend(lengthDiff)
 
 	} else if lengthDiff < 0 {
-		col.Resize(newLength)
+		col.Shrink(newLength)
 	}
 	for i := fromIdx; i <= toIdx; i++ {
 		col.ReadItem(indexData, i-fromIdx)
@@ -183,7 +190,10 @@ func (c *Column8) UnitSize() int {
 }
 
 // Resize removes spare array items
-func (c *Column8) Resize(rightIdx int) {
+func (c *Column8) Shrink(rightIdx int) {
+	if rightIdx >= len(c.data) {
+		panic("Cannot shrink to a larger column")
+	}
 	c.data = c.data[:rightIdx]
 }
 
@@ -260,7 +270,10 @@ func (c *Column32) UnitSize() int {
 }
 
 // Resize removes spare array items
-func (c *Column32) Resize(rightIdx int) {
+func (c *Column32) Shrink(rightIdx int) {
+	if rightIdx >= len(c.data) {
+		panic("Cannot shrink to a larger column")
+	}
 	c.data = c.data[:rightIdx]
 }
 
