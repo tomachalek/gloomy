@@ -20,6 +20,7 @@ import (
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/vertical"
+	"github.com/tomachalek/gloomy/wdict"
 	"log"
 )
 
@@ -38,7 +39,7 @@ type IndexBuilder struct {
 
 	buffer *vertical.NgramBuffer
 
-	wordDict *WordDictBuilder
+	wordDict *wdict.WordDictWriter
 
 	nindex *index.DynamicNgramIndex
 }
@@ -116,7 +117,7 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 		buffer:       vertical.NewNgramBuffer(ngramSize),
 		stopWords:    conf.NgramStopStrings,
 		ignoreWords:  conf.NgramIgnoreStrings,
-		wordDict:     NewWordDictBuilder(),
+		wordDict:     wdict.NewWordDictWriter(),
 		nindex:       index.NewDynamicNgramIndex(ngramSize, 10000, conf.Args), // TODO initial size
 	}
 }

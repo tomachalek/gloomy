@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package builder
+package wdict
 
 import (
 	"bufio"
@@ -43,12 +43,12 @@ func (wde *wordDictExport) Less(i, j int) bool {
 
 // ---------------------------------------
 
-type WordDictBuilder struct {
+type WordDictWriter struct {
 	index   map[string]int
 	counter int
 }
 
-func (w *WordDictBuilder) AddToken(token string) {
+func (w *WordDictWriter) AddToken(token string) {
 	_, ok := w.index[token]
 	if !ok {
 		w.index[token] = w.counter
@@ -56,7 +56,7 @@ func (w *WordDictBuilder) AddToken(token string) {
 	}
 }
 
-func (w *WordDictBuilder) GetTokenIndex(token string) int {
+func (w *WordDictWriter) GetTokenIndex(token string) int {
 	idx, ok := w.index[token]
 	if ok {
 		return idx
@@ -64,7 +64,7 @@ func (w *WordDictBuilder) GetTokenIndex(token string) int {
 	return 0
 }
 
-func (w *WordDictBuilder) Finalize(dstPath string) {
+func (w *WordDictWriter) Finalize(dstPath string) {
 	tmp := make([]string, len(w.index))
 	i := 0
 	for k := range w.index {
@@ -77,10 +77,10 @@ func (w *WordDictBuilder) Finalize(dstPath string) {
 		w.index[v] = i
 		i++
 	}
-	w.save(tmp, filepath.Join(dstPath, "word-dict.txt"))
+	w.save(tmp, filepath.Join(dstPath, "words.dict"))
 }
 
-func (w *WordDictBuilder) save(data []string, dstPath string) error {
+func (w *WordDictWriter) save(data []string, dstPath string) error {
 	f, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY, 0664)
 	defer f.Close()
 	if err != nil {
@@ -96,8 +96,8 @@ func (w *WordDictBuilder) save(data []string, dstPath string) error {
 	return nil
 }
 
-func NewWordDictBuilder() *WordDictBuilder {
-	return &WordDictBuilder{
+func NewWordDictWriter() *WordDictWriter {
+	return &WordDictWriter{
 		index: make(map[string]int),
 	}
 }

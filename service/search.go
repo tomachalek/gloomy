@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index"
 	"github.com/tomachalek/gloomy/index/gconf"
-	"github.com/tomachalek/gloomy/wstore"
+	"github.com/tomachalek/gloomy/wdict"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -37,7 +37,7 @@ type SearchResultItem struct {
 
 type SearchResult struct {
 	result *index.NgramSearchResult
-	wdict  *wstore.WordIndex
+	wdict  *wdict.WordDictReader
 }
 
 func (sr *SearchResult) Size() int {
@@ -63,13 +63,13 @@ func (sr *SearchResult) Next() *SearchResultItem {
 func Search(basePath string, corpusId string, phrase string, attrs []string) (*SearchResult, error) {
 	fullPath := filepath.Join(basePath, corpusId)
 	gindex := index.LoadNgramIndex(fullPath, attrs)
-	wdict, err := wstore.LoadWordDict(fullPath)
+	wd, err := wdict.LoadWordDict(fullPath)
 	if err != nil {
 		return nil, err
 	}
-	sindex := index.OpenSearchableIndex(gindex, wdict)
+	sindex := index.OpenSearchableIndex(gindex, wd)
 	res := sindex.GetNgramsOf(phrase)
-	ans := &SearchResult{result: res, wdict: wdict}
+	ans := &SearchResult{result: res, wdict: wd}
 	return ans, nil
 }
 

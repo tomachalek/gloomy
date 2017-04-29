@@ -20,7 +20,7 @@ package index
 import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index/column"
-	"github.com/tomachalek/gloomy/wstore"
+	"github.com/tomachalek/gloomy/wdict"
 	"os"
 	"sort"
 	"strings"
@@ -195,7 +195,7 @@ func NewNgramIndex(ngramSize int, initialLength int, attrMap map[string]string) 
 // of ngram-index with some functions allowing searching
 type SearchableIndex struct {
 	index  *NgramIndex
-	wstore *wstore.WordIndex
+	wstore *wdict.WordDictReader
 }
 
 // GetNgramsOf returns all the n-grams with first word
@@ -215,7 +215,7 @@ func (si *SearchableIndex) GetNgramsOf(word string) *NgramSearchResult {
 
 // OpenSearchableIndex creates a instance of SearchableIndex
 // based on internal NgramIndex instance and WordIndex instance
-func OpenSearchableIndex(index *NgramIndex, wstore *wstore.WordIndex) *SearchableIndex {
+func OpenSearchableIndex(index *NgramIndex, wstore *wdict.WordDictReader) *SearchableIndex {
 	return &SearchableIndex{index: index, wstore: wstore}
 }
 
