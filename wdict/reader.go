@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wstore
+package wdict
 
 import (
 	"bufio"
@@ -68,24 +68,26 @@ func loadIndices(srcPath string) ([]int, error) {
 	return ans, nil
 }
 
-type WordIndex struct {
+// WordDictReader translates words (string) to index values (int)
+// and vice versa
+type WordDictReader struct {
 	data []string
-	wmap []*string
 }
 
-func LoadWordDict(dataPath string) (*WordIndex, error) {
-	words, err := loadWords(filepath.Join(dataPath, "word-dict.txt"))
+// LoadWordDict loads a word dictionary from a specified
+// directory (file name is determined automatically).
+func LoadWordDict(dataPath string) (*WordDictReader, error) {
+	words, err := loadWords(filepath.Join(dataPath, "words.dict"))
 	if err != nil {
 		return nil, err
 	}
-	wmap := make([]*string, len(words))
-	for i := 0; i < len(words); i++ {
-		wmap[i] = &words[i]
-	}
-	return &WordIndex{data: words, wmap: wmap}, err
+	return &WordDictReader{data: words}, err
 }
 
-func (w *WordIndex) Find(word string) int {
+// Find searches (in O(log(n) time) for an index value
+// of a specified word.
+// In case the word is not found, -1 is returned.
+func (w *WordDictReader) Find(word string) int {
 	left := 0
 	right := len(w.data) - 1
 	pivot := len(w.data) / 2
@@ -111,10 +113,11 @@ func (w *WordIndex) Find(word string) int {
 	return -1
 }
 
-func (w *WordIndex) DecodeNgram(ngram []int) []string {
+// DecodeNgram finds a string representation of a word array (= n-gram).
+func (w *WordDictReader) DecodeNgram(ngram []int) []string {
 	ans := make([]string, len(ngram))
 	for i, val := range ngram {
-		ans[i] = *w.wmap[val]
+		ans[i] = w.data[val]
 	}
 	return ans
 }

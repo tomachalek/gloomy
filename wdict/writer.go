@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package builder
+package wdict
 
 import (
 	"bufio"
@@ -23,32 +23,20 @@ import (
 	"sort"
 )
 
-type wordDictExport struct {
-	words   []string
-	indices []int
-}
-
-func (wde *wordDictExport) Len() int {
-	return len(wde.words)
-}
-
-func (wde *wordDictExport) Swap(i, j int) {
-	wde.words[i], wde.words[j] = wde.words[j], wde.words[i]
-	wde.indices[i], wde.indices[j] = wde.indices[j], wde.indices[i]
-}
-
-func (wde *wordDictExport) Less(i, j int) bool {
-	return wde.words[i] < wde.words[j]
-}
-
-// ---------------------------------------
-
-type WordDictBuilder struct {
+// WordDictWriter writes a structure mapping words (string) to
+// indices (int). In fact, it is a simple array of strings with
+// similarly simple file representation where first item is a
+// string encoded integer containing number of words and then
+// there is a list of strings (all the values separated by LF).
+type WordDictWriter struct {
 	index   map[string]int
 	counter int
 }
 
-func (w *WordDictBuilder) AddToken(token string) {
+// AddToken adds a single word to the dictionary.
+// It is ok to add an already present value
+// (in such case, nothing is done).
+func (w *WordDictWriter) AddToken(token string) {
 	_, ok := w.index[token]
 	if !ok {
 		w.index[token] = w.counter
@@ -56,15 +44,23 @@ func (w *WordDictBuilder) AddToken(token string) {
 	}
 }
 
-func (w *WordDictBuilder) GetTokenIndex(token string) int {
+// GetTokenIndex returns an array index within word
+// dictionary of a specified token.
+// If no such token is found then -1 is returned
+// (normally, during data indexing, this should not happen)
+func (w *WordDictWriter) GetTokenIndex(token string) int {
 	idx, ok := w.index[token]
 	if ok {
 		return idx
 	}
-	return 0
+	return -1
 }
 
-func (w *WordDictBuilder) Finalize(dstPath string) {
+// Finalize sorts the dictionary, attaches final
+// indices (from 0 to N) to the tokens and saves the data.
+// Please note that this means that before Finalize is called
+// the indices are only temporary and cannot be used.
+func (w *WordDictWriter) Finalize(dstPath string) {
 	tmp := make([]string, len(w.index))
 	i := 0
 	for k := range w.index {
@@ -77,10 +73,10 @@ func (w *WordDictBuilder) Finalize(dstPath string) {
 		w.index[v] = i
 		i++
 	}
-	w.save(tmp, filepath.Join(dstPath, "word-dict.txt"))
+	w.save(tmp, filepath.Join(dstPath, "words.dict"))
 }
 
-func (w *WordDictBuilder) save(data []string, dstPath string) error {
+func (w *WordDictWriter) save(data []string, dstPath string) error {
 	f, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY, 0664)
 	defer f.Close()
 	if err != nil {
@@ -96,8 +92,10 @@ func (w *WordDictBuilder) save(data []string, dstPath string) error {
 	return nil
 }
 
-func NewWordDictBuilder() *WordDictBuilder {
-	return &WordDictBuilder{
+// NewWordDictWriter creates a new instance
+// of the WordDictWriter
+func NewWordDictWriter() *WordDictWriter {
+	return &WordDictWriter{
 		index: make(map[string]int),
 	}
 }

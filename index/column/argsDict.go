@@ -22,38 +22,26 @@ import (
 	"strconv"
 )
 
-type ArgsList []*ArgsDictReader
-
-func (a ArgsList) GetArg(ident string) *ArgsDictReader {
-	for _, v := range a {
-		if v.name == ident {
-			return v
-		}
-	}
-	return nil
-}
-
-func (a ArgsList) GetArgIdx(ident string) int {
-	for i, v := range a {
-		if v.name == ident {
-			return i
-		}
-	}
-	return -1
-}
-
+// ArgsWriterList represents a list of ArgsDictWriter
+// instances. The order is significant and is kept
+// the same during indexing process.
 type ArgsWriterList []*ArgsDictWriter
 
 // -------------------------------------------------------------------
 
+// ArgsDictWriter handles writing of metadata word <-> index dictionary
+// during indexing.
 type ArgsDictWriter struct {
 	name    string
 	index   map[string]int
 	counter int
 }
 
+// Name returns ArgsDictWriter which is a respective
+// metadata attribute name.
 func (adw *ArgsDictWriter) Name() string { return adw.name }
 
+// AddValue adds a new token to the dictionary.
 func (adw *ArgsDictWriter) AddValue(v string) int {
 	_, ok := adw.index[v]
 	if !ok {
@@ -63,6 +51,8 @@ func (adw *ArgsDictWriter) AddValue(v string) int {
 	return adw.index[v]
 }
 
+// Save saves the dictionary to a file. The name
+// is generated automatically.
 func (adw *ArgsDictWriter) Save(dirPath string) error {
 	// TODO
 	outPath := filepath.Join(dirPath, fmt.Sprintf("column_%s.dict", adw.name))
@@ -85,6 +75,8 @@ func (adw *ArgsDictWriter) Save(dirPath string) error {
 	return nil
 }
 
+// NewArgsDictWriter creates a new ArgsDictWriter
+// instance.
 func NewArgsDictWriter(name string) *ArgsDictWriter {
 	return &ArgsDictWriter{
 		name:    name,
@@ -95,13 +87,47 @@ func NewArgsDictWriter(name string) *ArgsDictWriter {
 
 // -------------------------------------------------------------------
 
+// ArgsReaderList represents a list of ArgsDictReader instances.
+// The order is significant as it is mapped to the original order
+// user requested when called a search.
+type ArgsReaderList []*ArgsDictReader
+
+// GetArg returns an ArgDictReader based on the attribute
+// name. In case nothing is found, nil is returned.
+func (a ArgsReaderList) GetArg(ident string) *ArgsDictReader {
+	for _, v := range a {
+		if v.name == ident {
+			return v
+		}
+	}
+	return nil
+}
+
+// GetArgIdx returns an index of ArgsDictReader instance
+// identified by a respective attribute name. If nothing
+// is found, -1 is returned.
+func (a ArgsReaderList) GetArgIdx(ident string) int {
+	for i, v := range a {
+		if v.name == ident {
+			return i
+		}
+	}
+	return -1
+}
+
+// -------------------------------------------------------------------
+
+// ArgsDictReader handles reading of a dictionary
+// containing word <-> index mapping.
 type ArgsDictReader struct {
 	name  string
 	index map[AttrVal]string
 }
 
+// Name returns name of a respective metadata attribute.
 func (ad *ArgsDictReader) Name() string { return ad.name }
 
+// LoadArgsDict loads a specific attribute dictionary.
 func LoadArgsDict(dirPath string, ident string) (*ArgsDictReader, error) {
 	filePath := filepath.Join(dirPath, fmt.Sprintf("column_%s.dict", ident))
 	f, err := os.Open(filePath)
@@ -123,5 +149,4 @@ func LoadArgsDict(dirPath string, ident string) (*ArgsDictReader, error) {
 		dict.index[AttrVal(i)] = fr.Text()
 	}
 	return dict, nil
-
 }

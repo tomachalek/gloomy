@@ -71,9 +71,9 @@ func TestMethodsColumn8ExtendBound(t *testing.T) {
 	assert.Equal(t, 10, col.StoredSize())
 }
 
-func TestMethodsColumn8Resize(t *testing.T) {
+func TestMethodsColumn8Shrink(t *testing.T) {
 	col, _ := NewMetadataColumn("foo", "col8", 10)
-	col.Resize(2)
+	col.Shrink(2)
 
 	assert.Equal(t, 2, col.Size())
 	assert.Equal(t, 10, col.StoredSize())
@@ -83,7 +83,7 @@ func TestMethodsColumn8ResizeOverflow(t *testing.T) {
 	col, _ := NewMetadataColumn("foo", "col8", 10)
 
 	assert.Panics(t, func() {
-		col.Resize(20)
+		col.Shrink(20)
 	})
 }
 
