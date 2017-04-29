@@ -18,6 +18,17 @@
 
 package column
 
+// This file contains an implementation of metadata columns
+// which are 1:1 mapped to the last index column of an n-ngram.
+// I.e. there are N columns for n-grams 'n' where
+// len(n[0]) <= len(n[1]) <= ... <= len(n[N])
+// and M columns for M metadata attributes 'a' where
+// len(a[0]) == len(a[1]) == ... == len(a[M]) == len(n[N])
+//
+// These columns can be of these types:
+// "col8" - 8-bit for up to 255 different values
+// "col32" - 32-bit for up to 4294967295 different values
+
 import (
 	"bufio"
 	"bytes"
@@ -31,8 +42,14 @@ import (
 
 var _ = log.Print
 
+// AttrVal is an internal representation
+// of an attribute value
 type AttrVal int
 
+// AttrValColumn is an interface representing
+// general metadata column no matter what
+// representation (8bit, 32bit, whatever)
+// is used.
 type AttrValColumn interface {
 	Name() string
 
