@@ -28,6 +28,15 @@ func TestRTNodeAddEdge(t *testing.T) {
 	assert.Equal(t, edge, node.edges[0])
 }
 
+//
+//  initial state:
+//   o ------------------> o ------------> o
+//   n1  e12[sunflower]    n2  e23[foo]    n3
+//
+//   after the split:
+//   o ------------> o ----------------> o -------------> o
+//   n1  e12[sun]    nX  e12a[flower]    n2   e23[foo]    n3
+//
 func TestRTEdgeSplit(t *testing.T) {
 	node1 := NewRTNode()
 	node2 := NewRTNode()
@@ -41,9 +50,32 @@ func TestRTEdgeSplit(t *testing.T) {
 	edge12a := edge12.split("sun")
 
 	assert.Equal(t, node1.edges[0], edge12)
+	assert.Equal(t, "sun", edge12.value)
 	assert.Equal(t, edge12.node.edges[0], edge12a)
+	assert.Equal(t, "flower", edge12a.value)
 	assert.Equal(t, edge12a.node, node2)
 	assert.Equal(t, node2.edges[0], edge23)
 	assert.Equal(t, edge23.node, node3)
+	assert.Equal(t, "foo", edge23.value)
+}
 
+func TestAddSubstringToExisting(t *testing.T) {
+	rt := NewRadixTree()
+	rt.Add("sunflower")
+	assert.Equal(t, "sunflower", rt.root.edges[0].value)
+	assert.Equal(t, 1, len(rt.root.edges))
+
+	edge := rt.Add("sun")
+
+	assert.Equal(t, 1, len(rt.root.edges))
+	assert.Equal(t, edge, rt.root.edges[0].node.edges[0])
+	assert.Equal(t, "flower", edge.value)
+}
+
+func TestAddSuperStringToExisting(t *testing.T) {
+	rt := NewRadixTree()
+	rt.Add("sun")
+	assert.Equal(t, "sun", rt.root.edges[0].value)
+	rt.Add("sunflower")
+	assert.Equal(t, "flower", rt.root.edges[0].node.edges[0].value)
 }

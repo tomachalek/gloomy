@@ -33,6 +33,7 @@ func (rte *RTEdge) split(substr string) *RTEdge {
 	tmpNode := rte.node
 	rte.node = newNode
 	newEdge := NewRTEdge(rte.value[len(substr):], tmpNode)
+	rte.value = rte.value[:len(substr)]
 	newNode.edges = []*RTEdge{newEdge}
 
 	return newEdge
@@ -73,19 +74,28 @@ type RadixTree struct {
 
 func traverseTree(fromNode *RTNode, srch string) *RTEdge {
 	for _, edge := range fromNode.edges {
-		if strings.HasPrefix(srch, edge.value) {
+		if srch == edge.value {
+			return edge
+
+		} else if strings.HasPrefix(srch, edge.value) {
 			return traverseTree(edge.node, srch[len(edge.value):])
 
 		} else if strings.HasPrefix(edge.value, srch) {
-			// split the node
+			return edge.split(srch)
 
 		} else if fromNode.isLeaf() {
 		}
 		return edge
 	}
-	return nil
+	newEdge := NewRTEdge(srch, NewRTNode())
+	fromNode.addEdge(newEdge)
+	return newEdge
 }
 
-func (rt *RadixTree) Add(word string) {
-	//edge := traverseTree(rt.root, word)
+func (rt *RadixTree) Add(word string) *RTEdge {
+	return traverseTree(rt.root, word)
+}
+
+func NewRadixTree() *RadixTree {
+	return &RadixTree{root: NewRTNode()}
 }
