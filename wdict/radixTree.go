@@ -23,24 +23,38 @@ const (
 )
 
 type RTEdge struct {
-	node  *RTNode
+
+	// a radix tree node following this edge (i.e. the top-down direction)
+	node *RTNode
+
+	// a token part
 	value string
+
+	// position within index
+	idx int
 }
 
-func (rte *RTEdge) split(substr string) *RTEdge {
+//
+// o --------------> o --- ...
+// ?   rte[aabb]     x
+//
+// o ------------> o ----------------> o --- ...
+// ?   rte[aa]  newNode  newEdge[bb]   x
+func (rte *RTEdge) split(substr string, idx int) *RTEdge {
 	newNode := NewRTNode()
 
 	tmpNode := rte.node
 	rte.node = newNode
-	newEdge := NewRTEdge(rte.value[len(substr):], tmpNode)
+	newEdge := NewRTEdge(rte.value[len(substr):], rte.idx, tmpNode)
 	rte.value = rte.value[:len(substr)]
+	rte.idx = idx
 	newNode.edges = []*RTEdge{newEdge}
 
 	return newEdge
 }
 
-func NewRTEdge(value string, node *RTNode) *RTEdge {
-	return &RTEdge{node: node, value: value}
+func NewRTEdge(value string, idx int, node *RTNode) *RTEdge {
+	return &RTEdge{node: node, value: value, idx: idx}
 }
 
 // ----------------------------------------------------------------------------
@@ -72,6 +86,46 @@ type RadixTree struct {
 	root *RTNode
 }
 
+func min(v1 int, v2 int) int {
+	if v1 < v2 {
+		return v1
+	}
+	return v2
+}
+
+func commonPrefixLen(s1 string, s2 string) int {
+	var i int
+	for i = 0; i < min(len(s1), len(s2)); i++ {
+		if s1[i] != s2[i] {
+			return i
+		}
+	}
+	return i
+}
+
+func writeTraversingTree(fromNode *RTNode, srch string, idx int) *RTEdge {
+	for _, edge := range fromNode.edges {
+		if srch == edge.value {
+			return edge
+
+		} else if strings.HasPrefix(srch, edge.value) {
+			return writeTraversingTree(edge.node, srch[len(edge.value):], idx)
+
+		} else if strings.HasPrefix(edge.value, srch) {
+			return edge.split(srch, idx)
+		}
+		prefixLen := commonPrefixLen(srch, edge.value)
+		if prefixLen > 0 {
+			edge.split(srch[:prefixLen], idx)
+			edge.idx = -1
+			return writeTraversingTree(edge.node, srch[prefixLen:], idx)
+		}
+	}
+	newEdge := NewRTEdge(srch, idx, NewRTNode())
+	fromNode.addEdge(newEdge)
+	return newEdge
+}
+
 func traverseTree(fromNode *RTNode, srch string) *RTEdge {
 	for _, edge := range fromNode.edges {
 		if srch == edge.value {
@@ -79,23 +133,27 @@ func traverseTree(fromNode *RTNode, srch string) *RTEdge {
 
 		} else if strings.HasPrefix(srch, edge.value) {
 			return traverseTree(edge.node, srch[len(edge.value):])
-
-		} else if strings.HasPrefix(edge.value, srch) {
-			return edge.split(srch)
-
-		} else if fromNode.isLeaf() {
 		}
-		return edge
 	}
-	newEdge := NewRTEdge(srch, NewRTNode())
-	fromNode.addEdge(newEdge)
-	return newEdge
+	return nil
 }
 
-func (rt *RadixTree) Add(word string) *RTEdge {
+func (rt *RadixTree) Add(word string, idx int) *RTEdge {
+	return writeTraversingTree(rt.root, word, idx)
+}
+
+func (rt *RadixTree) find(word string) *RTEdge {
 	return traverseTree(rt.root, word)
+}
+
+func (rt *RadixTree) Find(word string) int {
+	if srch := rt.find(word); srch != nil {
+		return srch.idx
+	}
+	return -1
 }
 
 func NewRadixTree() *RadixTree {
 	return &RadixTree{root: NewRTNode()}
+
 }

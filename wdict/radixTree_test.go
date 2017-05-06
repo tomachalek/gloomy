@@ -22,10 +22,20 @@ import (
 func TestRTNodeAddEdge(t *testing.T) {
 	node := NewRTNode()
 	assert.Equal(t, 0, len(node.edges))
-	edge := NewRTEdge("foo", NewRTNode())
+	edge := NewRTEdge("foo", 20, NewRTNode())
 	node.addEdge(edge)
 	assert.Equal(t, 1, len(node.edges))
 	assert.Equal(t, edge, node.edges[0])
+}
+
+func TestCommonPrefixLen(t *testing.T) {
+	assert.Equal(t, 4, commonPrefixLen("atom", "atomius"))
+	assert.Equal(t, 4, commonPrefixLen("atomax", "atomius"))
+	assert.Equal(t, 2, commonPrefixLen("at", "at"))
+	assert.Equal(t, 0, commonPrefixLen("bat", "at"))
+	assert.Equal(t, 1, commonPrefixLen("bat", "bet"))
+	assert.Equal(t, 0, commonPrefixLen("", ""))
+
 }
 
 //
@@ -40,42 +50,131 @@ func TestRTNodeAddEdge(t *testing.T) {
 func TestRTEdgeSplit(t *testing.T) {
 	node1 := NewRTNode()
 	node2 := NewRTNode()
-	edge12 := NewRTEdge("sunflower", node2)
+	edge12 := NewRTEdge("sunflower", 37, node2)
 	node1.addEdge(edge12)
 
 	node3 := NewRTNode()
-	edge23 := NewRTEdge("foo", node3)
+	edge23 := NewRTEdge("foo", 52, node3)
 	node2.addEdge(edge23)
 
-	edge12a := edge12.split("sun")
+	edge12a := edge12.split("sun", 14)
 
 	assert.Equal(t, node1.edges[0], edge12)
 	assert.Equal(t, "sun", edge12.value)
+	assert.Equal(t, 14, edge12.idx)
+
 	assert.Equal(t, edge12.node.edges[0], edge12a)
 	assert.Equal(t, "flower", edge12a.value)
+	assert.Equal(t, 37, edge12a.idx)
 	assert.Equal(t, edge12a.node, node2)
+
 	assert.Equal(t, node2.edges[0], edge23)
 	assert.Equal(t, edge23.node, node3)
 	assert.Equal(t, "foo", edge23.value)
+	assert.Equal(t, 52, edge23.idx)
 }
 
 func TestAddSubstringToExisting(t *testing.T) {
 	rt := NewRadixTree()
-	rt.Add("sunflower")
+	rt.Add("sunflower", 11)
 	assert.Equal(t, "sunflower", rt.root.edges[0].value)
+	assert.Equal(t, 11, rt.root.edges[0].idx)
 	assert.Equal(t, 1, len(rt.root.edges))
 
-	edge := rt.Add("sun")
+	edge := rt.Add("sun", 12)
 
 	assert.Equal(t, 1, len(rt.root.edges))
 	assert.Equal(t, edge, rt.root.edges[0].node.edges[0])
+	assert.Equal(t, 11, rt.root.edges[0].node.edges[0].idx)
+	assert.Equal(t, 12, rt.root.edges[0].idx)
 	assert.Equal(t, "flower", edge.value)
 }
 
 func TestAddSuperStringToExisting(t *testing.T) {
 	rt := NewRadixTree()
-	rt.Add("sun")
+	rt.Add("sun", 11)
 	assert.Equal(t, "sun", rt.root.edges[0].value)
-	rt.Add("sunflower")
+	assert.Equal(t, 11, rt.root.edges[0].idx)
+	rt.Add("sunflower", 12)
 	assert.Equal(t, "flower", rt.root.edges[0].node.edges[0].value)
+	assert.Equal(t, 12, rt.root.edges[0].node.edges[0].idx)
+}
+
+func TestAddTwoWithCommonPrefix(t *testing.T) {
+	rt := NewRadixTree()
+	rt.Add("romane", 12)
+	assert.Equal(t, 12, rt.root.edges[0].idx)
+	rt.Add("romanus", 13)
+	assert.Equal(t, -1, rt.root.edges[0].idx) // common prefix edge does not refer to any actual index
+	assert.Equal(t, 1, len(rt.root.edges))
+	assert.Equal(t, "roman", rt.root.edges[0].value)
+	tmp := rt.root.edges[0].node
+	assert.Equal(t, 2, len(tmp.edges))
+	assert.Equal(t, "e", tmp.edges[0].value)
+	assert.Equal(t, 12, tmp.edges[0].idx)
+	assert.Equal(t, "us", tmp.edges[1].value)
+	assert.Equal(t, 13, tmp.edges[1].idx)
+}
+
+func TestSearch(t *testing.T) {
+	rt := NewRadixTree()
+	rt.Add("romane", 11)
+	rt.Add("romanus", 12)
+	rt.Add("romulus", 13)
+	rt.Add("rubens", 14)
+	rt.Add("ruber", 15)
+	rt.Add("rubicon", 16)
+
+	var srch *RTEdge
+
+	srch = rt.find("romane")
+	assert.Equal(t, "e", srch.value)
+	assert.Equal(t, 11, srch.idx)
+
+	srch = rt.find("romanus")
+	assert.Equal(t, "us", srch.value)
+	assert.Equal(t, 12, srch.idx)
+
+	srch = rt.find("romulus")
+	assert.Equal(t, "ulus", srch.value)
+	assert.Equal(t, 13, srch.idx)
+
+	srch = rt.find("rubens")
+	assert.Equal(t, "ns", srch.value)
+	assert.Equal(t, 14, srch.idx)
+
+	srch = rt.find("ruber")
+	assert.Equal(t, "r", srch.value)
+	assert.Equal(t, 15, srch.idx)
+
+	srch = rt.find("rubicon")
+	assert.Equal(t, "icon", srch.value)
+	assert.Equal(t, 16, srch.idx)
+
+	srch = rt.find("rub")
+	assert.Equal(t, -1, srch.idx)
+
+	srch = rt.find("xen")
+	assert.Nil(t, srch)
+
+	srch = rt.find("rombom")
+	assert.Nil(t, srch)
+}
+
+func TestApiFound(t *testing.T) {
+	rt := NewRadixTree()
+	rt.Add("romane", 11)
+	rt.Add("romanus", 12)
+	rt.Add("romulus", 13)
+	rt.Add("rubens", 14)
+	rt.Add("ruber", 15)
+	rt.Add("rubicon", 16)
+
+	var idx int
+
+	idx = rt.Find("romane")
+	assert.Equal(t, 11, idx)
+
+	idx = rt.Find("xen")
+	assert.Equal(t, -1, idx)
 }
