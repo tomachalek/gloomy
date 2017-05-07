@@ -124,6 +124,7 @@ func createTestingTree() *RadixTree {
 	rt.Add("rubens", 14)
 	rt.Add("ruber", 15)
 	rt.Add("rubicon", 16)
+	rt.Add("voltron", 17)
 	return rt
 }
 
@@ -185,8 +186,23 @@ func TestFindByPrefix(t *testing.T) {
 	assert.Equal(t, 3, len(ans))
 }
 
+func TestFindWholeWordSingleEdge(t *testing.T) {
+	rt := createTestingTree()
+	ans := rt.FindByPrefix("voltron")
+	assert.Equal(t, "voltron", ans[0])
+}
+
 func TestFindByPrefixNonExisting(t *testing.T) {
 	rt := createTestingTree()
 	ans := rt.FindByPrefix("romix")
 	assert.Equal(t, 0, len(ans))
+}
+
+func TestFindIndicesByPrefixNonExisting(t *testing.T) {
+	rt := createTestingTree()
+	ans := rt.FindIndicesByPrefix("rom")
+	assert.Equal(t, 11, ans[0])
+	assert.Equal(t, 12, ans[1])
+	assert.Equal(t, 13, ans[2])
+	assert.Equal(t, 3, len(ans))
 }
