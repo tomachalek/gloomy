@@ -22,11 +22,10 @@ import (
 	"strconv"
 )
 
-func loadWords(srcPath string) ([]string, error) {
-	var ans []string
+func loadWords(srcPath string) (*WordDictReader, error) {
 	f, err := os.Open(srcPath)
 	if err != nil {
-		return ans, err
+		return nil, err
 	}
 	fr := bufio.NewScanner(f)
 	fr.Scan() // size
@@ -34,10 +33,13 @@ func loadWords(srcPath string) ([]string, error) {
 	if err != nil {
 		panic(err)
 	}
-	ans = make([]string, size)
+	words := make([]string, size)
+	tree := NewRadixTree()
 	for i := 0; fr.Scan(); i++ {
-		ans[i] = fr.Text()
+		words[i] = fr.Text()
+		tree.Add(fr.Text(), i)
 	}
+	ans := &WordDictReader{data: words, tree: tree}
 	return ans, nil
 }
 
@@ -72,16 +74,13 @@ func loadIndices(srcPath string) ([]int, error) {
 // and vice versa
 type WordDictReader struct {
 	data []string
+	tree *RadixTree
 }
 
 // LoadWordDict loads a word dictionary from a specified
 // directory (file name is determined automatically).
 func LoadWordDict(dataPath string) (*WordDictReader, error) {
-	words, err := loadWords(filepath.Join(dataPath, "words.dict"))
-	if err != nil {
-		return nil, err
-	}
-	return &WordDictReader{data: words}, err
+	return loadWords(filepath.Join(dataPath, "words.dict"))
 }
 
 // Find searches (in O(log(n) time) for an index value
@@ -91,7 +90,7 @@ func (w *WordDictReader) Find(word string) int {
 	left := 0
 	right := len(w.data) - 1
 	pivot := len(w.data) / 2
-	for left < right && w.data[pivot] != word {
+	for right-left > 1 && w.data[pivot] != word {
 		if w.data[left] <= word && word <= w.data[pivot] {
 			tmp := pivot
 			pivot = (left + pivot) / 2
@@ -105,12 +104,15 @@ func (w *WordDictReader) Find(word string) int {
 		} else {
 			break
 		}
-
 	}
 	if word == w.data[pivot] {
 		return pivot
 	}
 	return -1
+}
+
+func (w *WordDictReader) FindByPrefix(prefix string) []int {
+	return w.tree.FindIndicesByPrefix(prefix)
 }
 
 // DecodeNgram finds a string representation of a word array (= n-gram).

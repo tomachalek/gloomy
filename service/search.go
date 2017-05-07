@@ -68,7 +68,23 @@ func Search(basePath string, corpusId string, phrase string, attrs []string) (*S
 		return nil, err
 	}
 	sindex := index.OpenSearchableIndex(gindex, wd)
-	res := sindex.GetNgramsOf(phrase)
+	var res *index.NgramSearchResult
+
+	if strings.HasSuffix(phrase, "*") {
+		indices := wd.FindByPrefix(phrase[:len(phrase)-1])
+		for _, item := range indices {
+			tmp := sindex.GetNgramsOfIdx(item)
+			if res == nil {
+				res = tmp
+
+			} else {
+				res.Append(tmp)
+			}
+		}
+
+	} else {
+		res = sindex.GetNgramsOf(phrase)
+	}
 	ans := &SearchResult{result: res, wdict: wd}
 	return ans, nil
 }

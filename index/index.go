@@ -57,7 +57,13 @@ type NgramResultValue struct {
 type NgramSearchResult struct {
 	first *ngramResultItem
 	curr  *ngramResultItem
+	last  *ngramResultItem
 	size  int
+}
+
+func (nsr *NgramSearchResult) Append(other *NgramSearchResult) {
+	nsr.last.next = other.first
+	nsr.last = other.last
 }
 
 // GetSize returns a size of the result
@@ -104,6 +110,7 @@ func (nsr *NgramSearchResult) addValue(ngram []int, count int, metadata []string
 		nsr.curr.next = item
 	}
 	nsr.curr = item
+	nsr.last = item
 	nsr.size++
 }
 
@@ -203,8 +210,23 @@ type SearchableIndex struct {
 func (si *SearchableIndex) GetNgramsOf(word string) *NgramSearchResult {
 	var ans *NgramSearchResult
 	w := si.wstore.Find(word)
+	if w == -1 {
+		return &NgramSearchResult{}
+	}
 	col0Idx := sort.Search(si.index.values[0].Size(), func(i int) bool {
 		return si.index.values[0].Get(i).Index >= w
+	})
+	if col0Idx == si.index.values[0].Size() {
+		return ans
+	}
+	ans = si.index.GetNgramsAt(col0Idx)
+	return ans
+}
+
+func (si *SearchableIndex) GetNgramsOfIdx(idx int) *NgramSearchResult {
+	var ans *NgramSearchResult
+	col0Idx := sort.Search(si.index.values[0].Size(), func(i int) bool {
+		return si.index.values[0].Get(i).Index >= idx
 	})
 	if col0Idx == si.index.values[0].Size() {
 		return ans

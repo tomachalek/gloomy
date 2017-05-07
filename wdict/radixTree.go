@@ -148,24 +148,50 @@ func collectWords(fromNode *RTNode, partWord string, ans []string) []string {
 	return ans
 }
 
-func findWord(fromNode *RTNode, partWord string) *RTNode {
+func collectIndices(fromNode *RTNode, ans []int) []int {
+	for _, edge := range fromNode.edges {
+		if edge.idx > -1 {
+			ans = append(ans, edge.idx)
+		}
+		ans = collectIndices(edge.node, ans)
+	}
+	return ans
+}
+
+func findWord(fromNode *RTNode, partWord string) *RTEdge {
 	for _, edge := range fromNode.edges {
 		if strings.HasPrefix(partWord, edge.value) && len(partWord) > len(edge.value) {
 			return findWord(edge.node, partWord[len(edge.value):])
 
 		} else if strings.HasPrefix(edge.value, partWord) {
-			return edge.node
+			return edge
 		}
 	}
 	return nil
 }
 
 func (rt *RadixTree) FindByPrefix(prefix string) []string {
-	spreadNode := findWord(rt.root, prefix)
-	if spreadNode != nil {
-		return collectWords(spreadNode, prefix, make([]string, 0, 10))
+	ans := make([]string, 0, 10)
+	srchEdge := findWord(rt.root, prefix)
+	if srchEdge != nil {
+		if srchEdge.idx > -1 {
+			ans = append(ans, prefix)
+		}
+		return collectWords(srchEdge.node, prefix, ans)
 	}
 	return []string{}
+}
+
+func (rt *RadixTree) FindIndicesByPrefix(prefix string) []int {
+	ans := make([]int, 0, 10)
+	srchEdge := findWord(rt.root, prefix)
+	if srchEdge != nil {
+		if srchEdge.idx > -1 {
+			ans = append(ans, srchEdge.idx)
+		}
+		return collectIndices(srchEdge.node, ans)
+	}
+	return []int{}
 }
 
 func (rt *RadixTree) Add(word string, idx int) *RTEdge {
