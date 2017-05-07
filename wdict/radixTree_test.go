@@ -116,7 +116,7 @@ func TestAddTwoWithCommonPrefix(t *testing.T) {
 	assert.Equal(t, 13, tmp.edges[1].idx)
 }
 
-func TestSearch(t *testing.T) {
+func createTestingTree() *RadixTree {
 	rt := NewRadixTree()
 	rt.Add("romane", 11)
 	rt.Add("romanus", 12)
@@ -124,7 +124,11 @@ func TestSearch(t *testing.T) {
 	rt.Add("rubens", 14)
 	rt.Add("ruber", 15)
 	rt.Add("rubicon", 16)
+	return rt
+}
 
+func TestSearch(t *testing.T) {
+	rt := createTestingTree()
 	var srch *RTEdge
 
 	srch = rt.find("romane")
@@ -162,14 +166,7 @@ func TestSearch(t *testing.T) {
 }
 
 func TestApiFound(t *testing.T) {
-	rt := NewRadixTree()
-	rt.Add("romane", 11)
-	rt.Add("romanus", 12)
-	rt.Add("romulus", 13)
-	rt.Add("rubens", 14)
-	rt.Add("ruber", 15)
-	rt.Add("rubicon", 16)
-
+	rt := createTestingTree()
 	var idx int
 
 	idx = rt.Find("romane")
@@ -177,4 +174,19 @@ func TestApiFound(t *testing.T) {
 
 	idx = rt.Find("xen")
 	assert.Equal(t, -1, idx)
+}
+
+func TestFindByPrefix(t *testing.T) {
+	rt := createTestingTree()
+	ans := rt.FindByPrefix("rom")
+	assert.Equal(t, "romane", ans[0])
+	assert.Equal(t, "romanus", ans[1])
+	assert.Equal(t, "romulus", ans[2])
+	assert.Equal(t, 3, len(ans))
+}
+
+func TestFindByPrefixNonExisting(t *testing.T) {
+	rt := createTestingTree()
+	ans := rt.FindByPrefix("romix")
+	assert.Equal(t, 0, len(ans))
 }

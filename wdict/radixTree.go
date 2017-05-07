@@ -138,6 +138,36 @@ func traverseTree(fromNode *RTNode, srch string) *RTEdge {
 	return nil
 }
 
+func collectWords(fromNode *RTNode, partWord string, ans []string) []string {
+	for _, edge := range fromNode.edges {
+		if edge.idx > -1 {
+			ans = append(ans, partWord+edge.value)
+		}
+		ans = collectWords(edge.node, partWord+edge.value, ans)
+	}
+	return ans
+}
+
+func findWord(fromNode *RTNode, partWord string) *RTNode {
+	for _, edge := range fromNode.edges {
+		if strings.HasPrefix(partWord, edge.value) && len(partWord) > len(edge.value) {
+			return findWord(edge.node, partWord[len(edge.value):])
+
+		} else if strings.HasPrefix(edge.value, partWord) {
+			return edge.node
+		}
+	}
+	return nil
+}
+
+func (rt *RadixTree) FindByPrefix(prefix string) []string {
+	spreadNode := findWord(rt.root, prefix)
+	if spreadNode != nil {
+		return collectWords(spreadNode, prefix, make([]string, 0, 10))
+	}
+	return []string{}
+}
+
 func (rt *RadixTree) Add(word string, idx int) *RTEdge {
 	return writeTraversingTree(rt.root, word, idx)
 }
@@ -155,5 +185,4 @@ func (rt *RadixTree) Find(word string) int {
 
 func NewRadixTree() *RadixTree {
 	return &RadixTree{root: NewRTNode()}
-
 }
