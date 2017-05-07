@@ -102,6 +102,13 @@ func startSearchService(confBasePath string) {
 	service.Serve(conf)
 }
 
+func parseAttrs(attrStr string) []string {
+	if len(attrStr) == 0 {
+		return []string{}
+	}
+	return strings.Split(attrStr, ",")
+}
+
 func main() {
 	ngramSize := flag.Int("ngram-size", 2, "N-gram size, 2: bigram (default), ...")
 	srchConfPath := flag.String("conf-path", "", "Path to the gloomy.conf (by default, working dir is used")
@@ -128,7 +135,7 @@ func main() {
 			if flag.Arg(1) == "" || flag.Arg(2) == "" {
 				log.Fatal("Missing argument (both corpus and query must be specified)")
 			}
-			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), strings.Split(*metadataAttrs, ","))
+			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), parseAttrs(*metadataAttrs))
 		default:
 			panic("Unknown action")
 		}
