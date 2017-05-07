@@ -62,9 +62,45 @@ gloomy search-service
 Test a client:
 
 ```
-curl -XGET http://localhost:8090/search?corpus=susanne&q=from&attrs=doc.file&attrs=doc.n
+curl -XGET http://localhost:8090/search?corpus=susanne&q=from
 ```
 
+
+### Query syntax
+
+The current version supports only a search by the first token.
+
+Exact search:
+
+```
+gloomy search susanne absolute
+```
+
+... searches for all the n-grams with the first token equal to *absolute*.
+
+
+Search by a prefix:
+
+```
+gloomy search susanne abs*
+```
+
+... searches for all the n-grams where the first token starts with *abs\**
+
+
+### Metadata retrieval
+
+**Command line**:
+
+```
+gloomy seaerch --attrs doc.file,doc.n susanne absolute
+```
+
+In **HTTP server mode** use multi-value attribute:
+
+```
+http://localhost:8090/search?corpus=susanne&q=from&attrs=doc.file&attrs=doc.n
+```
 
 
 ## Additional functions
