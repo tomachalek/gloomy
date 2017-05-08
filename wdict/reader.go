@@ -123,3 +123,7 @@ func (w *WordDictReader) DecodeNgram(ngram []int) []string {
 	}
 	return ans
 }
+
+func (w *WordDictReader) DecodeToken(widx int) string {
+	return w.data[widx]
+}

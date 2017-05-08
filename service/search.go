@@ -60,6 +60,31 @@ func (sr *SearchResult) Next() *SearchResultItem {
 	return nil
 }
 
+func loadRange(index *index.SearchableIndex, indices []int) {
+	min := indices[0]
+	max := indices[0]
+	for _, v := range indices {
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+	}
+	index.LoadRange(min, max)
+}
+
+func translateWidxToColIdx(index *index.SearchableIndex, indices []int) []int {
+	wi := 0
+	for i := 0; i < len(indices); i++ {
+		indices[wi] = index.GetCol0Idx(indices[i])
+		if indices[wi] > -1 {
+			wi++
+		}
+	}
+	return indices[:wi]
+}
+
 func Search(basePath string, corpusId string, phrase string, attrs []string) (*SearchResult, error) {
 	fullPath := filepath.Join(basePath, corpusId)
 	gindex := index.LoadNgramIndex(fullPath, attrs)
@@ -68,19 +93,29 @@ func Search(basePath string, corpusId string, phrase string, attrs []string) (*S
 		return nil, err
 	}
 	sindex := index.OpenSearchableIndex(gindex, wd)
-	var res *index.NgramSearchResult
 
+	var res *index.NgramSearchResult
 	if strings.HasSuffix(phrase, "*") {
 		indices := wd.FindByPrefix(phrase[:len(phrase)-1])
-		for _, item := range indices {
-			tmp := sindex.GetNgramsOfIdx(item)
+		indices = translateWidxToColIdx(sindex, indices)
+		loadRange(sindex, indices)
+		ch := make(chan *index.NgramSearchResult, len(indices))
+		for _, colIdx := range indices {
+			go func(v int) {
+				ch <- sindex.GetNgramsOfColIdx(v)
+			}(colIdx)
+		}
+		var chunk *index.NgramSearchResult
+		for range indices {
+			chunk = <-ch
 			if res == nil {
-				res = tmp
+				res = chunk
 
 			} else {
-				res.Append(tmp)
+				res.Append(chunk)
 			}
 		}
+		close(ch)
 
 	} else {
 		res = sindex.GetNgramsOf(phrase)

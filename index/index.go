@@ -135,9 +135,12 @@ func (n *NgramIndex) GetInfo() string {
 	return fmt.Sprintf("NgramIndex, num cols: %d, sizes %s", len(n.values), strings.Join(sizes, ", "))
 }
 
+func (n *NgramIndex) LoadRange(fromPos int, toPos int) {
+	n.loadData(fromPos, toPos)
+}
+
 // GetNgramsAt returns all the ngrams where the first word index equals position
 func (n *NgramIndex) GetNgramsAt(position int) *NgramSearchResult {
-	n.loadData(position, position) // TODO multiple search phrases not supported yet
 	result := &NgramSearchResult{}
 	n.getNextTokenRecords(0, position, position, make([]int, 0), result)
 	result.ResetCursor()
@@ -201,6 +204,12 @@ func NewNgramIndex(ngramSize int, initialLength int, attrMap map[string]string) 
 
 // SearchableIndex is a higher-level representation
 // of ngram-index with some functions allowing searching
+//
+// Please note that SearchableIndex does not handle data
+// loading automatically. It provides method LoadRange
+// to load a specified part of column data but the logic
+// is up to a search routine (which decides which words
+// we are actually looking for by parsing a query),
 type SearchableIndex struct {
 	index  *NgramIndex
 	wstore *wdict.WordDictReader
@@ -220,11 +229,44 @@ func (si *SearchableIndex) GetNgramsOf(word string) *NgramSearchResult {
 	if col0Idx == si.index.values[0].Size() {
 		return ans
 	}
+	si.LoadRange(col0Idx, col0Idx)
 	ans = si.index.GetNgramsAt(col0Idx)
 	return ans
 }
 
-func (si *SearchableIndex) GetNgramsOfIdx(idx int) *NgramSearchResult {
+// LoadRange loads column data starting from fromIdx
+// up to toIdx
+func (si *SearchableIndex) LoadRange(fromIdx int, toIdx int) {
+	si.index.LoadRange(fromIdx, toIdx)
+}
+
+// GetCol0Idx returns an index within zero column
+// of provided word identied by an index within
+// word dictionary
+func (si *SearchableIndex) GetCol0Idx(widx int) int {
+	ans := sort.Search(si.index.values[0].Size(), func(i int) bool {
+		return si.index.values[0].Get(i).Index >= widx
+	})
+	if si.index.values[0].Get(ans).Index == widx {
+		return ans
+	}
+	return -1
+}
+
+// GetNgramsOfColIdx returns all the n-grams with the first word identified
+// by its index within zero column
+func (si *SearchableIndex) GetNgramsOfColIdx(idx int) *NgramSearchResult {
+	var ans *NgramSearchResult
+	if idx >= si.index.values[0].Size() {
+		return ans
+	}
+	ans = si.index.GetNgramsAt(idx)
+	return ans
+}
+
+// GetNgramsOfWidx returns all the n-grams with the first word identified
+// by its word dictionary index value
+func (si *SearchableIndex) GetNgramsOfWidx(idx int) *NgramSearchResult {
 	var ans *NgramSearchResult
 	col0Idx := sort.Search(si.index.values[0].Size(), func(i int) bool {
 		return si.index.values[0].Get(i).Index >= idx
