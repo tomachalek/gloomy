@@ -64,6 +64,7 @@ type NgramSearchResult struct {
 func (nsr *NgramSearchResult) Append(other *NgramSearchResult) {
 	nsr.last.next = other.first
 	nsr.last = other.last
+	nsr.size += other.size
 }
 
 // GetSize returns a size of the result
