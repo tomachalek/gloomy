@@ -32,6 +32,25 @@ func createSimpleResult() *NgramSearchResult {
 	item3 := &ngramResultItem{}
 	item3.ngram = []int{2}
 	item2.next = item3
+	r.last = item3
+	r.size = 3
+	return r
+}
+
+func createAnotherResult() *NgramSearchResult {
+	r := &NgramSearchResult{}
+	item1 := &ngramResultItem{}
+	item1.ngram = []int{3}
+	r.first = item1
+	r.curr = item1
+	item2 := &ngramResultItem{}
+	item2.ngram = []int{4}
+	item1.next = item2
+	item3 := &ngramResultItem{}
+	item3.ngram = []int{5}
+	item2.next = item3
+	r.last = item3
+	r.size = 3
 	return r
 }
 
@@ -46,6 +65,25 @@ func TestNgramSearchResultEmpty(t *testing.T) {
 	assert.Nil(t, ans)
 }
 
+func TestNgramSearchResultAddValue(t *testing.T) {
+	r := &NgramSearchResult{}
+	r.addValue([]int{0}, 1, []string{})
+	r.addValue([]int{1}, 1, []string{})
+
+	assert.Equal(t, 2, r.GetSize())
+	assert.True(t, r.first.next == r.last)
+	assert.True(t, r.first.next == r.curr)
+}
+
+func TestNGramSearchResultResetCursor(t *testing.T) {
+	r := &NgramSearchResult{}
+	r.addValue([]int{0}, 1, []string{})
+	r.addValue([]int{1}, 1, []string{})
+	r.ResetCursor()
+
+	assert.True(t, r.first == r.curr)
+}
+
 func TestNgramSearchResultIter2(t *testing.T) {
 	r := createSimpleResult()
 	tst := make([]int, 3)
@@ -54,4 +92,40 @@ func TestNgramSearchResultIter2(t *testing.T) {
 		tst[i] = r.Next().Ngram[0]
 	}
 	assert.Equal(t, []int{0, 1, 2}, tst)
+}
+
+func TestNgramSearchResultAppend(t *testing.T) {
+	r1 := createSimpleResult()
+	r2 := createAnotherResult()
+	r1.Append(r2)
+
+	assert.Equal(t, 6, r1.GetSize())
+	assert.True(t, r1.first.next.next.next == r2.first)
+	assert.True(t, r1.last == r2.last)
+	assert.True(t, r1.curr == r1.first)
+}
+
+func TestNgramSearchResultSlice(t *testing.T) {
+	r := &NgramSearchResult{}
+	for i := 0; i < 20; i++ {
+		r.addValue([]int{i}, 1, []string{})
+	}
+	r.Slice(10, 15)
+
+	assert.Equal(t, 5, r.GetSize())
+	assert.Equal(t, 10, r.first.ngram[0])
+	assert.True(t, r.last == r.first.next.next.next.next)
+	assert.Nil(t, r.first.next.next.next.next.next)
+	assert.Equal(t, 14, r.first.next.next.next.next.ngram[0])
+	assert.True(t, r.first == r.curr)
+}
+
+func TestNgramSearchResultSliceZero(t *testing.T) {
+	r := &NgramSearchResult{}
+	for i := 0; i < 20; i++ {
+		r.addValue([]int{i}, 1, []string{})
+	}
+	err := r.Slice(10, 10)
+	assert.Error(t, err)
+	assert.Equal(t, 20, r.GetSize())
 }
