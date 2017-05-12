@@ -82,10 +82,10 @@ func loadSearchConf(confBasePath string) *gconf.SearchConf {
 	return gconf.LoadSearchConf(confBasePath)
 }
 
-func searchCLI(confBasePath string, corpus string, query string, attrs []string) {
+func searchCLI(confBasePath string, corpus string, query string, attrs []string, offset int, limit int) {
 	conf := loadSearchConf(confBasePath)
 	t1 := time.Now()
-	ans, err := service.Search(conf.DataPath, corpus, query, attrs)
+	ans, err := service.Search(conf.DataPath, corpus, query, attrs, offset, limit)
 	if err != nil {
 		log.Printf("Srch error: %s", err)
 	}
@@ -113,6 +113,7 @@ func main() {
 	ngramSize := flag.Int("ngram-size", 2, "N-gram size, 2: bigram (default), ...")
 	srchConfPath := flag.String("conf-path", "", "Path to the gloomy.conf (by default, working dir is used")
 	metadataAttrs := flag.String("attrs", "", "Metadata attributes separated by comma")
+	resultLimit := flag.Int("limit", -1, "Result limit")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
@@ -135,7 +136,8 @@ func main() {
 			if flag.Arg(1) == "" || flag.Arg(2) == "" {
 				log.Fatal("Missing argument (both corpus and query must be specified)")
 			}
-			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), parseAttrs(*metadataAttrs))
+			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), parseAttrs(*metadataAttrs),
+				0, *resultLimit)
 		default:
 			panic("Unknown action")
 		}

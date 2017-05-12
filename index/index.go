@@ -67,6 +67,26 @@ func (nsr *NgramSearchResult) Append(other *NgramSearchResult) {
 	nsr.size += other.size
 }
 
+func (nsr *NgramSearchResult) Slice(leftIdx int, rightIdx int) error {
+	if leftIdx >= rightIdx {
+		return fmt.Errorf("Right index must be greater than the left index")
+	}
+	curr := nsr.first
+	for i := 1; i <= leftIdx; i++ {
+		curr = curr.next
+	}
+	nsr.first = curr
+	nsr.curr = curr
+	nsr.size = 1
+	for i := leftIdx + 1; i < rightIdx; i++ {
+		curr = curr.next
+		nsr.size++
+	}
+	nsr.last = curr
+	curr.next = nil
+	return nil
+}
+
 // GetSize returns a size of the result
 // (this is an O(1) operation)
 func (nsr *NgramSearchResult) GetSize() int {
