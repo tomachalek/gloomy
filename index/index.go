@@ -75,7 +75,7 @@ func (nsr *NgramSearchResult) Append(other *NgramSearchResult) {
 // performed only if rightIdx is strictly greater than
 // leftIdx.
 func (nsr *NgramSearchResult) Slice(leftIdx int, rightIdx int) bool {
-	if leftIdx < 0 || rightIdx >= nsr.GetSize() {
+	if leftIdx < 0 || rightIdx >= nsr.Size() {
 		log.Panicf("Invalid slice arguments (%d, %d)", leftIdx, rightIdx)
 	}
 	if leftIdx >= rightIdx {
@@ -97,9 +97,9 @@ func (nsr *NgramSearchResult) Slice(leftIdx int, rightIdx int) bool {
 	return true
 }
 
-// GetSize returns a size of the result
+// Size returns a size of the result
 // (this is an O(1) operation)
-func (nsr *NgramSearchResult) GetSize() int {
+func (nsr *NgramSearchResult) Size() int {
 	return nsr.size
 }
 

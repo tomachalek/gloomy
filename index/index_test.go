@@ -72,7 +72,7 @@ func TestNgramSearchResultAddValue(t *testing.T) {
 	r.addValue([]int{0}, 1, []string{})
 	r.addValue([]int{1}, 1, []string{})
 
-	assert.Equal(t, 2, r.GetSize())
+	assert.Equal(t, 2, r.Size())
 	assert.True(t, r.first.next == r.last)
 	assert.True(t, r.first.next == r.curr)
 }
@@ -101,7 +101,7 @@ func TestNgramSearchResultAppend(t *testing.T) {
 	r2 := createAnotherResult()
 	r1.Append(r2)
 
-	assert.Equal(t, 6, r1.GetSize())
+	assert.Equal(t, 6, r1.Size())
 	assert.True(t, r1.first.next.next.next == r2.first)
 	assert.True(t, r1.last == r2.last)
 	assert.True(t, r1.curr == r1.first)
@@ -114,7 +114,7 @@ func TestNgramSearchResultSlice(t *testing.T) {
 	}
 	r.Slice(10, 15)
 
-	assert.Equal(t, 5, r.GetSize())
+	assert.Equal(t, 5, r.Size())
 	assert.Equal(t, 10, r.first.ngram[0])
 	assert.True(t, r.last == r.first.next.next.next.next)
 	assert.Nil(t, r.first.next.next.next.next.next)
@@ -129,7 +129,7 @@ func TestNgramSearchResultSliceZero(t *testing.T) {
 	}
 	ok := r.Slice(5, 5)
 	assert.False(t, ok)
-	assert.Equal(t, 10, r.GetSize())
+	assert.Equal(t, 10, r.Size())
 }
 
 func TestNgramSearchResultSliceNegativeRight(t *testing.T) {
@@ -139,7 +139,7 @@ func TestNgramSearchResultSliceNegativeRight(t *testing.T) {
 	}
 	ok := r.Slice(5, -1)
 	assert.False(t, ok)
-	assert.Equal(t, 10, r.GetSize())
+	assert.Equal(t, 10, r.Size())
 }
 
 func TestNgramSearchResultSliceNegativeLeft(t *testing.T) {
