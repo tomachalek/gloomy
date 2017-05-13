@@ -109,7 +109,7 @@ func Search(basePath string, corpusId string, phrase string, attrs []string, off
 				res.Append(chunk)
 			}
 			if res.GetSize() >= offset+limit {
-				res.Slice(offset, limit)
+				res.Slice(offset, offset+limit)
 			}
 		}
 		close(ch)
@@ -117,7 +117,7 @@ func Search(basePath string, corpusId string, phrase string, attrs []string, off
 	} else {
 		res = sindex.GetNgramsOf(phrase)
 		if res.GetSize() >= offset+limit {
-			res.Slice(offset, limit)
+			res.Slice(offset, offset+limit)
 		}
 
 	}

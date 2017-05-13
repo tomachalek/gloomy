@@ -54,6 +54,8 @@ func createAnotherResult() *NgramSearchResult {
 	return r
 }
 
+// ------------------------------------------------------------------
+
 func TestNewNgramIndex(t *testing.T) {
 	d := NewNgramIndex(3, 5, make(map[string]string))
 	assert.Equal(t, 3, len(d.values))
@@ -122,10 +124,40 @@ func TestNgramSearchResultSlice(t *testing.T) {
 
 func TestNgramSearchResultSliceZero(t *testing.T) {
 	r := &NgramSearchResult{}
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 10; i++ {
 		r.addValue([]int{i}, 1, []string{})
 	}
-	err := r.Slice(10, 10)
-	assert.Error(t, err)
-	assert.Equal(t, 20, r.GetSize())
+	ok := r.Slice(5, 5)
+	assert.False(t, ok)
+	assert.Equal(t, 10, r.GetSize())
+}
+
+func TestNgramSearchResultSliceNegativeRight(t *testing.T) {
+	r := &NgramSearchResult{}
+	for i := 0; i < 10; i++ {
+		r.addValue([]int{i}, 1, []string{})
+	}
+	ok := r.Slice(5, -1)
+	assert.False(t, ok)
+	assert.Equal(t, 10, r.GetSize())
+}
+
+func TestNgramSearchResultSliceNegativeLeft(t *testing.T) {
+	r := &NgramSearchResult{}
+	for i := 0; i < 5; i++ {
+		r.addValue([]int{i}, 1, []string{})
+	}
+	assert.Panics(t, func() {
+		r.Slice(-1, 4)
+	})
+}
+
+func TestNgramSearchResultSliceTooBigRight(t *testing.T) {
+	r := &NgramSearchResult{}
+	for i := 0; i < 5; i++ {
+		r.addValue([]int{i}, 1, []string{})
+	}
+	assert.Panics(t, func() {
+		r.Slice(-1, 10)
+	})
 }
