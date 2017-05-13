@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/wdict"
+	"log"
 	"os"
 	"sort"
 	"strings"
@@ -67,9 +68,18 @@ func (nsr *NgramSearchResult) Append(other *NgramSearchResult) {
 	nsr.size += other.size
 }
 
-func (nsr *NgramSearchResult) Slice(leftIdx int, rightIdx int) error {
+// Slice slices internal list preserving items starting
+// from leftIdx (including) up to rightIdx (excluding).
+// If an actual slice has been performed then true is
+// returned, otherwise false is returned. Slice is
+// performed only if rightIdx is strictly greater than
+// leftIdx.
+func (nsr *NgramSearchResult) Slice(leftIdx int, rightIdx int) bool {
+	if leftIdx < 0 || rightIdx >= nsr.Size() {
+		log.Panicf("Invalid slice arguments (%d, %d)", leftIdx, rightIdx)
+	}
 	if leftIdx >= rightIdx {
-		return fmt.Errorf("Right index must be greater than the left index")
+		return false
 	}
 	curr := nsr.first
 	for i := 1; i <= leftIdx; i++ {
@@ -84,12 +94,12 @@ func (nsr *NgramSearchResult) Slice(leftIdx int, rightIdx int) error {
 	}
 	nsr.last = curr
 	curr.next = nil
-	return nil
+	return true
 }
 
-// GetSize returns a size of the result
+// Size returns a size of the result
 // (this is an O(1) operation)
-func (nsr *NgramSearchResult) GetSize() int {
+func (nsr *NgramSearchResult) Size() int {
 	return nsr.size
 }
 
@@ -155,11 +165,20 @@ func (n *NgramIndex) GetInfo() string {
 	return fmt.Sprintf("NgramIndex, num cols: %d, sizes %s", len(n.values), strings.Join(sizes, ", "))
 }
 
+// LoadRange loads data for all the configured
+// n-gram and metadata columns delimited by
+// interval [fromPos, toPos] applied
+// on the zero-th n-gram column (e.g. 100-200 on
+// 0th column means 1700-3500 on the 1st, 7000-9000
+// on 2th column which is calculated automatically).
+//
+// Both interval ends are included.
 func (n *NgramIndex) LoadRange(fromPos int, toPos int) {
 	n.loadData(fromPos, toPos)
 }
 
-// GetNgramsAt returns all the ngrams where the first word index equals position
+// GetNgramsAt returns all the ngrams where the first word
+// index equals position
 func (n *NgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 	result := &NgramSearchResult{}
 	n.getNextTokenRecords(0, position, position, make([]int, 0), result)
@@ -340,6 +359,8 @@ func (nib *DynamicNgramIndex) GetInfo() string {
 	return nib.index.GetInfo()
 }
 
+// MetadataWriter provides access to attached
+// metadata index writer
 func (nib *DynamicNgramIndex) MetadataWriter() *column.MetadataWriter {
 	return nib.metadataWriter
 }

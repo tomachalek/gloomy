@@ -114,6 +114,7 @@ func main() {
 	srchConfPath := flag.String("conf-path", "", "Path to the gloomy.conf (by default, working dir is used")
 	metadataAttrs := flag.String("attrs", "", "Metadata attributes separated by comma")
 	resultLimit := flag.Int("limit", -1, "Result limit")
+	resultOffset := flag.Int("offset", 0, "Result offset (starting from zero)")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
@@ -137,7 +138,7 @@ func main() {
 				log.Fatal("Missing argument (both corpus and query must be specified)")
 			}
 			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), parseAttrs(*metadataAttrs),
-				0, *resultLimit)
+				*resultOffset, *resultLimit)
 		default:
 			panic("Unknown action")
 		}

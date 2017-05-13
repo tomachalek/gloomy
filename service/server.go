@@ -77,11 +77,9 @@ type serviceHandler struct {
 func (s serviceHandler) route(p []string, args map[string][]string) (interface{}, ServerError) {
 	switch p[0] {
 	case "search":
+		var err error
 		t1 := time.Now()
 		offset, err := fetchIntArg(args, "offset", 0)
-		if err != nil {
-			return nil, newServerError(err, 500)
-		}
 		limit, err := fetchIntArg(args, "limit", -1)
 		if err != nil {
 			return nil, newServerError(err, 500)

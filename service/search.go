@@ -35,7 +35,7 @@ type SearchResult struct {
 }
 
 func (sr *SearchResult) Size() int {
-	return sr.result.GetSize()
+	return sr.result.Size()
 }
 
 func (sr *SearchResult) HasNext() bool {
@@ -108,16 +108,16 @@ func Search(basePath string, corpusId string, phrase string, attrs []string, off
 			} else {
 				res.Append(chunk)
 			}
-			if res.GetSize() >= offset+limit {
-				res.Slice(offset, limit)
+			if res.Size() >= offset+limit {
+				res.Slice(offset, offset+limit)
 			}
 		}
 		close(ch)
 
 	} else {
 		res = sindex.GetNgramsOf(phrase)
-		if res.GetSize() >= offset+limit {
-			res.Slice(offset, limit)
+		if res.Size() >= offset+limit {
+			res.Slice(offset, offset+limit)
 		}
 
 	}
