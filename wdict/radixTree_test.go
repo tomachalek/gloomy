@@ -20,9 +20,9 @@ import (
 )
 
 func TestRTNodeAddEdge(t *testing.T) {
-	node := NewRTNode()
+	node := newRTNode()
 	assert.Equal(t, 0, len(node.edges))
-	edge := NewRTEdge("foo", 20, NewRTNode())
+	edge := newRTEdge("foo", 20, newRTNode())
 	node.addEdge(edge)
 	assert.Equal(t, 1, len(node.edges))
 	assert.Equal(t, edge, node.edges[0])
@@ -48,13 +48,13 @@ func TestCommonPrefixLen(t *testing.T) {
 //   n1  e12[sun]    nX  e12a[flower]    n2   e23[foo]    n3
 //
 func TestRTEdgeSplit(t *testing.T) {
-	node1 := NewRTNode()
-	node2 := NewRTNode()
-	edge12 := NewRTEdge("sunflower", 37, node2)
+	node1 := newRTNode()
+	node2 := newRTNode()
+	edge12 := newRTEdge("sunflower", 37, node2)
 	node1.addEdge(edge12)
 
-	node3 := NewRTNode()
-	edge23 := NewRTEdge("foo", 52, node3)
+	node3 := newRTNode()
+	edge23 := newRTEdge("foo", 52, node3)
 	node2.addEdge(edge23)
 
 	edge12a := edge12.split("sun", 14)
