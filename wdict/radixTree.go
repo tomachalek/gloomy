@@ -22,10 +22,12 @@ const (
 	defaultEdgesCap = 30
 )
 
+// RTEdge represents a Radix Tree edge
+// which holds the actual string infix
 type RTEdge struct {
 
 	// a radix tree node following this edge (i.e. the top-down direction)
-	node *RTNode
+	node *rtNode
 
 	// a token part
 	value string
@@ -34,18 +36,21 @@ type RTEdge struct {
 	idx int
 }
 
+// split splits an existing edge into two edges
+// with a new node between them
 //
 // o --------------> o --- ...
 // ?   rte[aabb]     x
 //
 // o ------------> o ----------------> o --- ...
 // ?   rte[aa]  newNode  newEdge[bb]   x
+//
 func (rte *RTEdge) split(substr string, idx int) *RTEdge {
-	newNode := NewRTNode()
+	newNode := newRTNode()
 
 	tmpNode := rte.node
 	rte.node = newNode
-	newEdge := NewRTEdge(rte.value[len(substr):], rte.idx, tmpNode)
+	newEdge := newRTEdge(rte.value[len(substr):], rte.idx, tmpNode)
 	rte.value = rte.value[:len(substr)]
 	rte.idx = idx
 	newNode.edges = []*RTEdge{newEdge}
@@ -53,25 +58,25 @@ func (rte *RTEdge) split(substr string, idx int) *RTEdge {
 	return newEdge
 }
 
-func NewRTEdge(value string, idx int, node *RTNode) *RTEdge {
+func newRTEdge(value string, idx int, node *rtNode) *RTEdge {
 	return &RTEdge{node: node, value: value, idx: idx}
 }
 
 // ----------------------------------------------------------------------------
 
-type RTNode struct {
+type rtNode struct {
 	edges []*RTEdge
 }
 
-func NewRTNode() *RTNode {
-	return &RTNode{edges: make([]*RTEdge, 0, defaultEdgesCap)}
+func newRTNode() *rtNode {
+	return &rtNode{edges: make([]*RTEdge, 0, defaultEdgesCap)}
 }
 
-func (rtn *RTNode) isLeaf() bool {
+func (rtn *rtNode) isLeaf() bool {
 	return len(rtn.edges) == 0
 }
 
-func (rtn *RTNode) addEdge(e *RTEdge) {
+func (rtn *rtNode) addEdge(e *RTEdge) {
 	for _, e2 := range rtn.edges {
 		if e.value == e2.value {
 			return
@@ -82,8 +87,12 @@ func (rtn *RTNode) addEdge(e *RTEdge) {
 
 // ----------------------------------------------------------------------------
 
+// RadixTree is a simple implementation
+// of Radix Tree data structure for searching
+// strings by prefixes
+// (https://en.wikipedia.org/wiki/Radix_tree)
 type RadixTree struct {
-	root *RTNode
+	root *rtNode
 }
 
 func min(v1 int, v2 int) int {
@@ -103,7 +112,10 @@ func commonPrefixLen(s1 string, s2 string) int {
 	return i
 }
 
-func writeTraversingTree(fromNode *RTNode, srch string, idx int) *RTEdge {
+// writeTraversingTree writes a new value to the tree by
+// traversing it to the right location and by performing
+// a required modication
+func writeTraversingTree(fromNode *rtNode, srch string, idx int) *RTEdge {
 	for _, edge := range fromNode.edges {
 		if srch == edge.value {
 			return edge
@@ -121,12 +133,12 @@ func writeTraversingTree(fromNode *RTNode, srch string, idx int) *RTEdge {
 			return writeTraversingTree(edge.node, srch[prefixLen:], idx)
 		}
 	}
-	newEdge := NewRTEdge(srch, idx, NewRTNode())
+	newEdge := newRTEdge(srch, idx, newRTNode())
 	fromNode.addEdge(newEdge)
 	return newEdge
 }
 
-func traverseTree(fromNode *RTNode, srch string) *RTEdge {
+func traverseTree(fromNode *rtNode, srch string) *RTEdge {
 	for _, edge := range fromNode.edges {
 		if srch == edge.value {
 			return edge
@@ -138,7 +150,7 @@ func traverseTree(fromNode *RTNode, srch string) *RTEdge {
 	return nil
 }
 
-func collectWords(fromNode *RTNode, partWord string, ans []string) []string {
+func collectWords(fromNode *rtNode, partWord string, ans []string) []string {
 	for _, edge := range fromNode.edges {
 		if edge.idx > -1 {
 			ans = append(ans, partWord+edge.value)
@@ -148,7 +160,7 @@ func collectWords(fromNode *RTNode, partWord string, ans []string) []string {
 	return ans
 }
 
-func collectIndices(fromNode *RTNode, ans []int) []int {
+func collectIndices(fromNode *rtNode, ans []int) []int {
 	for _, edge := range fromNode.edges {
 		if edge.idx > -1 {
 			ans = append(ans, edge.idx)
@@ -158,7 +170,7 @@ func collectIndices(fromNode *RTNode, ans []int) []int {
 	return ans
 }
 
-func findWord(fromNode *RTNode, partWord string) *RTEdge {
+func findWord(fromNode *rtNode, partWord string) *RTEdge {
 	for _, edge := range fromNode.edges {
 		if strings.HasPrefix(partWord, edge.value) && len(partWord) > len(edge.value) {
 			return findWord(edge.node, partWord[len(edge.value):])
@@ -170,6 +182,8 @@ func findWord(fromNode *RTNode, partWord string) *RTEdge {
 	return nil
 }
 
+// FindByPrefix finds all the matching strings with
+// prefixes equal to 'prefix'.
 func (rt *RadixTree) FindByPrefix(prefix string) []string {
 	ans := make([]string, 0, 10)
 	srchEdge := findWord(rt.root, prefix)
@@ -182,6 +196,8 @@ func (rt *RadixTree) FindByPrefix(prefix string) []string {
 	return []string{}
 }
 
+// FindIndicesByPrefix finds all the matching indices
+// of strings with prefixes equal to 'prefix'.
 func (rt *RadixTree) FindIndicesByPrefix(prefix string) []int {
 	ans := make([]int, 0, 10)
 	srchEdge := findWord(rt.root, prefix)
@@ -194,6 +210,8 @@ func (rt *RadixTree) FindIndicesByPrefix(prefix string) []int {
 	return []int{}
 }
 
+// Add adds a word and its dictionary index to the
+// tree.
 func (rt *RadixTree) Add(word string, idx int) *RTEdge {
 	return writeTraversingTree(rt.root, word, idx)
 }
@@ -202,6 +220,8 @@ func (rt *RadixTree) find(word string) *RTEdge {
 	return traverseTree(rt.root, word)
 }
 
+// Find finds a matching word (exact) and returns
+// its stored index.
 func (rt *RadixTree) Find(word string) int {
 	if srch := rt.find(word); srch != nil {
 		return srch.idx
@@ -209,6 +229,8 @@ func (rt *RadixTree) Find(word string) int {
 	return -1
 }
 
+// NewRadixTree creates and returns an instance
+// of an empty Radix Tree.
 func NewRadixTree() *RadixTree {
-	return &RadixTree{root: NewRTNode()}
+	return &RadixTree{root: newRTNode()}
 }
