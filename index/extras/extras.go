@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index/builder"
 	"github.com/tomachalek/gloomy/index/gconf"
-	"github.com/tomachalek/gloomy/vertical"
+	"github.com/tomachalek/vertigo"
 	"log"
 	"os"
 	"strings"
@@ -38,7 +38,7 @@ func saveNgrams(ngramList *builder.NgramList, minFreq int, saveFile *os.File) er
 
 func ExtractUniqueNgrams(conf *gconf.IndexBuilderConf, ngramSize int) {
 	builder := builder.CreateIndexBuilder(conf, ngramSize)
-	vertical.ParseVerticalFile(conf.GetParserConf(), builder)
+	vertigo.ParseVerticalFile(conf.GetParserConf(), builder)
 	sortedIndexTmp, err := builder.GetOutputFiles().GetSortedIndexTmpPath(os.O_CREATE | os.O_TRUNC | os.O_WRONLY)
 	if err != nil {
 		panic(err)

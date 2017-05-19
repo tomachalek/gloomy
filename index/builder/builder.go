@@ -19,8 +19,8 @@ import (
 	"github.com/tomachalek/gloomy/index"
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/index/gconf"
-	"github.com/tomachalek/gloomy/vertical"
 	"github.com/tomachalek/gloomy/wdict"
+	"github.com/tomachalek/vertigo"
 	"log"
 )
 
@@ -37,7 +37,7 @@ type IndexBuilder struct {
 
 	ignoreWords []string
 
-	buffer *vertical.NgramBuffer
+	buffer *NgramBuffer
 
 	wordDict *wdict.WordDictWriter
 
@@ -70,7 +70,7 @@ func (b *IndexBuilder) isIgnoreWord(w string) bool {
 	return false
 }
 
-func (b *IndexBuilder) ProcessLine(vline *vertical.Token) {
+func (b *IndexBuilder) ProcessLine(vline *vertigo.Token) {
 	if vline != nil {
 		wordLC := vline.WordLC()
 		if b.isStopWord(wordLC) {
@@ -114,7 +114,7 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 		ngramList:    &NgramList{},
 		minNgramFreq: conf.MinNgramFreq,
 		ngramSize:    ngramSize,
-		buffer:       vertical.NewNgramBuffer(ngramSize),
+		buffer:       NewNgramBuffer(ngramSize),
 		stopWords:    conf.NgramStopStrings,
 		ignoreWords:  conf.NgramIgnoreStrings,
 		wordDict:     wdict.NewWordDictWriter(),
@@ -141,6 +141,6 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int) error {
 
 func CreateGloomyIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
 	builder := CreateIndexBuilder(conf, ngramSize)
-	vertical.ParseVerticalFile(conf.GetParserConf(), builder)
+	vertigo.ParseVerticalFile(conf.GetParserConf(), builder)
 	saveEncodedNgrams(builder, conf.MinNgramFreq)
 }
