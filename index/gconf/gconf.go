@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tomachalek/gloomy/vertical"
+	"github.com/tomachalek/vertigo"
 )
 
 func stripSuffix(filePath string) string {
@@ -57,19 +57,25 @@ func LoadSearchConf(confPath string) *SearchConf {
 // ---------------------------------------------------------
 
 type IndexBuilderConf struct {
-	OutDirectory string            `json:"outDirectory"`
-	MinNgramFreq int               `json:"minNgramFreq"`
-	Args         map[string]string `json:"args"`
-	vertical.ParserConf
+	vertigo.ParserConf
+
+	OutDirectory string `json:"outDirectory"`
+
+	MinNgramFreq int `json:"minNgramFreq"`
+
+	Args map[string]string `json:"args"`
+
+	NgramIgnoreStructs []string `json:"ngramIgnoreStructs"`
+
+	NgramStopStrings []string `json:"ngramStopStrings"`
+
+	NgramIgnoreStrings []string `json:"ngramIgnoreStrings"`
 }
 
-func (i *IndexBuilderConf) GetParserConf() *vertical.ParserConf {
-	return &vertical.ParserConf{
-		VerticalFilePath:   i.VerticalFilePath,
-		FilterArgs:         i.FilterArgs,
-		NgramIgnoreStructs: i.NgramIgnoreStructs,
-		NgramStopStrings:   i.NgramStopStrings,
-		NgramIgnoreStrings: i.NgramIgnoreStrings,
+func (i *IndexBuilderConf) GetParserConf() *vertigo.ParserConf {
+	return &vertigo.ParserConf{
+		VerticalFilePath: i.VerticalFilePath,
+		FilterArgs:       i.FilterArgs,
 	}
 }
 
