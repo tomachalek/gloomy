@@ -70,7 +70,11 @@ func (b *IndexBuilder) isIgnoreWord(w string) bool {
 	return false
 }
 
-func (b *IndexBuilder) ProcessLine(vline *vertigo.Token) {
+func (b *IndexBuilder) ProcStruct(vline *vertigo.Structure) {}
+
+func (b *IndexBuilder) ProcStructClose(vline *vertigo.StructureClose) {}
+
+func (b *IndexBuilder) ProcToken(vline *vertigo.Token) {
 	if vline != nil {
 		wordLC := vline.WordLC()
 		if b.isStopWord(wordLC) {

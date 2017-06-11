@@ -70,12 +70,19 @@ type IndexBuilderConf struct {
 	NgramStopStrings []string `json:"ngramStopStrings"`
 
 	NgramIgnoreStrings []string `json:"ngramIgnoreStrings"`
+
+	UseStrictStructParser bool `json:"useStrictStructParser"`
 }
 
 func (i *IndexBuilderConf) GetParserConf() *vertigo.ParserConf {
+	accumType := vertigo.AccumulatorTypeComb
+	if i.UseStrictStructParser {
+		accumType = vertigo.AccumulatorTypeStack
+	}
 	return &vertigo.ParserConf{
-		VerticalFilePath: i.VerticalFilePath,
-		FilterArgs:       i.FilterArgs,
+		VerticalFilePath:      i.VerticalFilePath,
+		FilterArgs:            i.FilterArgs,
+		StructAttrAccumulator: accumType,
 	}
 }
 
