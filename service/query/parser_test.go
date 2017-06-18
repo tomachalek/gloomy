@@ -21,7 +21,45 @@ import (
 
 func TestBasicString(t *testing.T) {
 	p := NewParser()
-	s := "a?b(cd)?[hH]"
-	p.Parse(s)
-	assert.True(t, true)
+	s := "žluťoučký"
+	err := p.Parse(s)
+	assert.Nil(t, err)
+}
+
+func TestCharEnum(t *testing.T) {
+	p := NewParser()
+	err := p.Parse("[hxXH]")
+	assert.Nil(t, err)
+}
+
+func TestIncorrectCharEnum(t *testing.T) {
+	p := NewParser()
+	err := p.Parse("[hxXH")
+	assert.Error(t, err)
+}
+
+func TestParentheses(t *testing.T) {
+	p := NewParser()
+	err := p.Parse("(foo)")
+	assert.Nil(t, err)
+}
+
+func TestParenthesesMissingLeft(t *testing.T) {
+	p := NewParser()
+	err := p.Parse("foo)")
+	assert.Error(t, err)
+}
+
+func TestAlternatives(t *testing.T) {
+	p := NewParser()
+	err := p.Parse("foo|bar")
+	assert.Nil(t, err)
+}
+
+// Combined stuff
+
+func TestAlternatives2(t *testing.T) {
+	p := NewParser()
+	err := p.Parse("foo|[bB]ar")
+	assert.Nil(t, err)
 }

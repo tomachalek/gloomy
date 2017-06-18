@@ -31,18 +31,24 @@ package query
 
 import (
 	"fmt"
+	"unicode"
 )
 
 func isAlnum(s rune) rune {
-	if s != '(' && s != ')' && s != '[' && s != ']' && s != '*' && s != '?' && s != '+' && s != '\u0003' {
+	if unicode.IsLetter(s) {
 		return s
 	}
+	/*
+		if s != '(' && s != ')' && s != '[' && s != ']' && s != '*' && s != '?' && s != '+' && s != '\u0003' {
+			return s
+		}*/
 	return '\u0000'
 }
 
 type Parser struct {
-	curr     int
-	inputStr []rune
+	curr      int
+	inputStr  []rune
+	currChunk chunk
 }
 
 func (p *Parser) currChar() rune {
@@ -61,52 +67,69 @@ func (p *Parser) Parse(input string) error {
 	p.curr = -1
 	p.inputStr = []rune(input)
 	p.fetchNextChar()
-	return p.parseRegex()
-}
-
-func (p *Parser) parseRegex() error {
-	c := p.currChar()
-	fmt.Printf("parse regex [%c] -->\n", c)
-	switch c {
-	case isAlnum(c), '(', '[':
-		p.parseTerm()
-		p.parseRegexRest()
-	default:
-		return fmt.Errorf("Failed to parse")
+	err := p.parseRegex()
+	if err != nil {
+		return err
+	}
+	if p.curr < len(p.inputStr) {
+		return fmt.Errorf("Incomplete expression, position %d", p.curr)
 	}
 	return nil
 }
 
+func (p *Parser) parseRegex() error {
+	var err error
+	c := p.currChar()
+	fmt.Printf("parse regex [%c] -->\n", c)
+	switch c {
+	case isAlnum(c), '(', '[':
+		err = p.parseTerm()
+		if err != nil {
+			break
+		}
+		err = p.parseRegexRest()
+	default:
+		return fmt.Errorf("Failed to parse [rule R]")
+	}
+	return err
+}
+
 func (p *Parser) parseRegexRest() error {
+	var err error
 	c := p.currChar()
 	fmt.Printf("parse regex rest [%c] -->\n", c)
 	switch c {
 	case '(', '[', isAlnum(c):
-		p.parseRegex()
+		err = p.parseRegex()
 	case ')':
 		break
 	case '\u0003':
 		break // end of input
 	default:
-		return fmt.Errorf("Failed to parse")
+		err = fmt.Errorf("Failed to parse at %d [rule R']", p.curr)
 	}
-	return nil
+	return err
 }
 
 func (p *Parser) parseTerm() error {
+	var err error
 	c := p.currChar()
 	fmt.Printf("parseTerm [%c] ->\n", c)
 	switch c {
 	case '(', '[', isAlnum(c):
-		p.parseFactor()
-		p.parseTermRest()
+		err = p.parseFactor()
+		if err != nil {
+			break
+		}
+		err = p.parseTermRest()
 	default:
-		return fmt.Errorf("Parse error... TODO")
+		err = fmt.Errorf("Failed to parse at %d [rule T]", p.curr)
 	}
-	return nil
+	return err
 }
 
 func (p *Parser) parseTermRest() error {
+	var err error
 	c := p.currChar()
 	fmt.Printf("parse term rest [%c] ->\n", c)
 	switch c {
@@ -114,46 +137,58 @@ func (p *Parser) parseTermRest() error {
 		fmt.Print("-- wildcard ---")
 		p.fetchNextChar()
 	case '|':
-		p.parseTerm()
+		p.fetchNextChar()
+		err = p.parseTerm()
 	case '(', ')', isAlnum(c), '\u0003':
 		break
 	default:
-		return fmt.Errorf("Parse error ... TODO")
+		err = fmt.Errorf("Parse error [rule T']")
 	}
-	return nil
+	return err
 }
 
-func (p *Parser) parseFactor() {
+func (p *Parser) parseFactor() error {
+	var err error
 	fmt.Print("parseFactor ->\n")
 	c := p.currChar()
 	switch c {
 	case '(':
 		p.fetchNextChar()
-		p.parseRegex()
-		p.match(')')
+		err = p.parseRegex()
+		if err != nil {
+			break
+		}
+		err = p.match(')')
 	case '[':
 		p.fetchNextChar()
-		p.parseList()
-		p.match(']')
+		err = p.parseList()
+		if err != nil {
+			break
+		}
+		err = p.match(']')
 	case isAlnum(c):
 		fmt.Printf("Terminal: %c\n\n", c)
 		p.fetchNextChar()
+	default:
+		err = fmt.Errorf("Parse error [rule F]")
 	}
+	return err
 }
 
 func (p *Parser) parseList() error {
+	var err error
 	c := p.currChar()
 	switch c {
 	case isAlnum(c):
 		fmt.Printf("list item [%c]\n", c)
 		p.fetchNextChar()
-		p.parseList()
+		err = p.parseList()
 	case ']':
 		break
 	default:
-		return fmt.Errorf("Parse error")
+		err = fmt.Errorf("Parse error at position %d - incorrect character list", p.curr)
 	}
-	return nil
+	return err
 }
 
 func (p *Parser) match(c rune) error {
@@ -162,9 +197,9 @@ func (p *Parser) match(c rune) error {
 		p.fetchNextChar()
 		return nil
 	}
-	return fmt.Errorf("Invalid input: %c, expected: %c", p.currChar(), c)
+	return fmt.Errorf("Parse error - invalid input: %c, expected: %c", p.currChar(), c)
 }
 
 func NewParser() *Parser {
-	return &Parser{}
+	return &Parser{currChunk: chunk{}}
 }
