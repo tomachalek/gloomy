@@ -54,7 +54,7 @@ func TestAddAlternativeChunks(t *testing.T) {
 	c2.addRune('X')
 	assert.Equal(t, "ox", a.children[0].asString())
 	assert.Equal(t, "OX", a.children[1].asString())
-	assert.Equal(t, 2, a.curr)
+	assert.Equal(t, 2, len(a.children))
 }
 
 func TestExport(t *testing.T) {
@@ -77,4 +77,34 @@ func TestExport(t *testing.T) {
 	assert.Equal(t, "fox1", alts[0])
 	assert.Equal(t, "fox2", alts[1])
 	assert.Equal(t, "fOX", alts[2])
+}
+
+//
+// [c]---<a>---[c1]---<a1>
+//        |            |----[c3]----<a3>
+//        |            |-----[c4]----<a4>
+//        |
+//        |----[c2]---<a2>
+//
+func TestGetLeaves(t *testing.T) {
+	c := newChunk()
+
+	a := c.addAlternative()
+	c1 := a.addChunk()
+	a1 := c1.addAlternative()
+
+	c2 := a.addChunk()
+	a2 := c2.addAlternative()
+
+	c3 := a1.addChunk()
+	a3 := c3.addAlternative()
+
+	c4 := a1.addChunk()
+	a4 := c4.addAlternative()
+
+	leaves := a.getLeaves()
+	assert.Equal(t, 3, len(leaves))
+	assert.Equal(t, a3, leaves[0])
+	assert.Equal(t, a4, leaves[1])
+	assert.Equal(t, a2, leaves[2])
 }
