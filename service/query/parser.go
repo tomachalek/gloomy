@@ -46,9 +46,10 @@ func isAlnum(s rune) rune {
 }
 
 type Parser struct {
-	curr      int
-	inputStr  []rune
-	currChunk chunk
+	curr     int
+	inputStr []rune
+	stack    *altStack
+	startAlt *atnstate
 }
 
 func (p *Parser) currChar() rune {
@@ -66,6 +67,8 @@ func (p *Parser) fetchNextChar() {
 func (p *Parser) Parse(input string) error {
 	p.curr = -1
 	p.inputStr = []rune(input)
+	p.startAlt = newState()
+	p.stack.Push(p.startAlt)
 	p.fetchNextChar()
 	err := p.parseRegex()
 	if err != nil {
@@ -77,10 +80,14 @@ func (p *Parser) Parse(input string) error {
 	return nil
 }
 
+func (p *Parser) GetAllPrefixes() []string {
+	return p.startAlt.getAll()
+}
+
+// R -> TR'
 func (p *Parser) parseRegex() error {
 	var err error
 	c := p.currChar()
-	fmt.Printf("parse regex [%c] -->\n", c)
 	switch c {
 	case isAlnum(c), '(', '[':
 		err = p.parseTerm()
@@ -94,16 +101,21 @@ func (p *Parser) parseRegex() error {
 	return err
 }
 
+// R' -> R
+// R' -> eps
 func (p *Parser) parseRegexRest() error {
 	var err error
 	c := p.currChar()
-	fmt.Printf("parse regex rest [%c] -->\n", c)
 	switch c {
 	case '(', '[', isAlnum(c):
 		err = p.parseRegex()
+		lastState := p.stack.Pop()
+		p.stack.Peek().getLast().appendState(lastState)
 	case ')':
 		break
 	case '\u0003':
+		lastState := p.stack.Pop()
+		p.stack.Peek().getLast().appendState(lastState)
 		break // end of input
 	default:
 		err = fmt.Errorf("Failed to parse at %d [rule R']", p.curr)
@@ -111,10 +123,10 @@ func (p *Parser) parseRegexRest() error {
 	return err
 }
 
+// T -> FT'
 func (p *Parser) parseTerm() error {
 	var err error
 	c := p.currChar()
-	fmt.Printf("parseTerm [%c] ->\n", c)
 	switch c {
 	case '(', '[', isAlnum(c):
 		err = p.parseFactor()
@@ -128,28 +140,53 @@ func (p *Parser) parseTerm() error {
 	return err
 }
 
+// T' -> eps
+// T' -> F?
+// T' -> F*
+// T' -> F|T ('|' is a consumed character here)
 func (p *Parser) parseTermRest() error {
 	var err error
 	c := p.currChar()
-	fmt.Printf("parse term rest [%c] ->\n", c)
 	switch c {
-	case '*', '+', '?':
-		fmt.Print("-- wildcard ---")
+	case '*', '?':
+		curr := p.stack.Pop()
+		beg := newState()
+		end := newState()
+		beg.appendState(curr)
+		curr.getLast().appendState(end)
+		beg.appendState(end)
+		p.stack.Push(beg)
+		p.fetchNextChar()
+	case '+':
+		// we can't do anything reasonable here
+		// in terms of prefix; we just stick
+		// with the original term and no repeat.
 		p.fetchNextChar()
 	case '|':
 		p.fetchNextChar()
 		err = p.parseTerm()
-	case '(', ')', isAlnum(c), '\u0003':
+		t2 := p.stack.Pop()
+		t1 := p.stack.Pop()
+		forkState := newState()
+		forkState.appendState(t1)
+		forkState.appendState(t2)
+		joinState := newState()
+		t1.getLast().appendState(joinState)
+		t2.getLast().appendState(joinState)
+		p.stack.Push(forkState)
+	case '(', ')', '[', isAlnum(c), '\u0003':
 		break
 	default:
-		err = fmt.Errorf("Parse error [rule T']")
+		err = fmt.Errorf("Parse error [nonterm T']")
 	}
 	return err
 }
 
+// F -> atom
+// F -> (R)
+// F -> [L]
 func (p *Parser) parseFactor() error {
 	var err error
-	fmt.Print("parseFactor ->\n")
 	c := p.currChar()
 	switch c {
 	case '(':
@@ -160,17 +197,24 @@ func (p *Parser) parseFactor() error {
 		}
 		err = p.match(')')
 	case '[':
+		p.stack.Push(newState())
 		p.fetchNextChar()
 		err = p.parseList()
 		if err != nil {
 			break
 		}
 		err = p.match(']')
+		if err == nil {
+			joinState := newState()
+			for _, c := range p.stack.Peek().children {
+				c.appendState(joinState)
+			}
+		}
 	case isAlnum(c):
-		fmt.Printf("Terminal: %c\n\n", c)
+		p.stack.Push(newRune(c))
 		p.fetchNextChar()
 	default:
-		err = fmt.Errorf("Parse error [rule F]")
+		err = fmt.Errorf("Parse error [nonterm F]")
 	}
 	return err
 }
@@ -180,7 +224,7 @@ func (p *Parser) parseList() error {
 	c := p.currChar()
 	switch c {
 	case isAlnum(c):
-		fmt.Printf("list item [%c]\n", c)
+		p.stack.Peek().addRune(c)
 		p.fetchNextChar()
 		err = p.parseList()
 	case ']':
@@ -193,7 +237,6 @@ func (p *Parser) parseList() error {
 
 func (p *Parser) match(c rune) error {
 	if p.currChar() == c {
-		fmt.Printf("MATCH %c (input: %c)\n", p.currChar(), c)
 		p.fetchNextChar()
 		return nil
 	}
@@ -201,5 +244,5 @@ func (p *Parser) match(c rune) error {
 }
 
 func NewParser() *Parser {
-	return &Parser{currChunk: chunk{}}
+	return &Parser{stack: newAltStack()}
 }

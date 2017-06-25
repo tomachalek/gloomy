@@ -14,123 +14,184 @@
 
 package query
 
-type chunk struct {
-	value []rune
-	next  *alternative
+import "fmt"
+
+type atnstate struct {
+	children []*atnstate
+	value    rune
 }
 
-func (ch *chunk) addAlternative() *alternative {
-	if ch.next != nil {
-		panic("Cannot add alternative - already present")
+func (a *atnstate) String() string {
+	if a.isRune() {
+		return fmt.Sprintf("RUNE[v: %c, num children: %d]", a.value, len(a.children))
 	}
-	ch.next = &alternative{children: make([]*chunk, 0, 10)}
-	return ch.next
+	return fmt.Sprintf("STATE[num children: %d]", len(a.children))
 }
 
-func (ch *chunk) addRune(v rune) {
-	if cap(ch.value) == len(ch.value) {
-		ch.value = append(ch.value, make([]rune, 1, 10)...)
+func (a *atnstate) asString() string {
+	return string(a.value)
+}
 
-	} else {
-		ch.value = ch.value[:len(ch.value)+1]
+func (a *atnstate) getLast() *atnstate {
+	// we expect every atnstate to be properly merged into a single final state
+	curr := a
+	for !curr.isLeaf() {
+		curr = curr.children[0]
 	}
-	ch.value[len(ch.value)-1] = v
+	return curr
 }
 
-func (ch *chunk) asString() string {
-	return string(ch.value)
+func (a *atnstate) addState() *atnstate {
+	return a.appendState(newState())
 }
 
-func (ch *chunk) asRunes() []rune {
-	return ch.value
-}
-
-func (ch *chunk) getAll() []string {
-	if !ch.hasNext() {
-		return []string{ch.asString()}
+func (a *atnstate) appendState(a2 *atnstate) *atnstate {
+	if a.value != '\u0000' && len(a.children) > 0 {
+		panic(fmt.Sprintf("Rune-like state cannot have multiple outgoing states. Value: %c", a.value))
 	}
-	return ch.next.getAlternatives(ch.asRunes())
+	a.children = append(a.children, a2)
+	return a2
 }
 
-func (ch *chunk) hasNext() bool {
-	return ch.next != nil
+func (a *atnstate) addRune(value rune) *atnstate {
+	return a.appendState(&atnstate{
+		children: make([]*atnstate, 0, 1),
+		value:    value,
+	})
 }
 
-func newChunk() *chunk {
-	return &chunk{value: make([]rune, 0, 10)}
+func (a *atnstate) isLeaf() bool {
+	return len(a.children) == 0
+}
+
+func (a *atnstate) isRune() bool {
+	return a.value != '\u0000'
+}
+
+func (a *atnstate) hasChild(a2 *atnstate) bool {
+	for _, c := range a.children {
+		if c == a2 {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *atnstate) removeChild(child *atnstate) {
+	for i, c := range a.children {
+		if c == child {
+			fmt.Println("REMOVE CHILD ", i)
+			copy(a.children[i:], a.children[i+1:])
+			a.children[len(a.children)-1] = nil
+			a.children = a.children[:len(a.children)-1]
+			break
+		}
+	}
+}
+
+func (a *atnstate) mergeAlternatives() *atnstate {
+	var dfs func(*atnstate)
+	leaves := make([]*atnstate, 0, 10)
+	dfs = func(n *atnstate) {
+		if n.isLeaf() {
+			leaves = append(leaves, n)
+		}
+		for _, c := range n.children {
+			dfs(c)
+		}
+	}
+	dfs(a)
+	newItem := &atnstate{}
+	for _, item := range leaves {
+		item.appendState(newItem)
+	}
+	return newItem
+}
+
+func (a *atnstate) getAll() []string {
+	return a.getAlternatives([]rune{})
+}
+
+func (a *atnstate) getAlternatives(prefix []rune) []string {
+	var dfs func(*atnstate, []rune)
+	alts := make([]string, 0, 50)
+
+	dfs = func(n *atnstate, prev []rune) {
+		var v []rune
+		if n.value != '\u0000' {
+			v = append(prev, n.value)
+
+		} else {
+			v = prev
+		}
+		if n.isLeaf() {
+			alts = append(alts, string(v))
+		}
+		for _, c := range n.children {
+			dfs(c, v)
+		}
+	}
+	dfs(a, prefix)
+	return alts
+}
+
+func newState() *atnstate {
+	return &atnstate{
+		children: make([]*atnstate, 0, 10),
+		value:    '\u0000',
+	}
+}
+
+func newRune(value rune) *atnstate {
+	return &atnstate{
+		children: make([]*atnstate, 0, 1),
+		value:    value,
+	}
 }
 
 // ------------------------------------------------------------------
 
-type alternative struct {
-	children []*chunk
+type stackItem struct {
+	value *atnstate
+	prev  *stackItem
 }
 
-func (a *alternative) addChunk() *chunk {
-	if cap(a.children) == len(a.children) {
-		a.children = append(a.children, make([]*chunk, 1, 10)...)
-
-	} else {
-		a.children = a.children[:len(a.children)+1]
-	}
-	nc := newChunk()
-	a.children[len(a.children)-1] = nc
-	return nc
+type altStack struct {
+	last *stackItem
 }
 
-func (a *alternative) isLeave() bool {
-	for _, v := range a.children {
-		if v.hasNext() {
-			return false
-		}
-	}
-	return true
+// newStack creates a new Stack instance
+func newAltStack() *altStack {
+	return &altStack{}
 }
 
-func (a *alternative) getAlternatives(prefix []rune) []string {
-	var dfs func(*alternative, []rune)
-	alts := make([]string, 50)
-	i := 0
-	dfs = func(n *alternative, curr []rune) {
-		for _, c := range n.children {
-			v := append(curr, c.asRunes()...)
-			if c.hasNext() {
-				dfs(c.next, v)
-
-			} else {
-				if i >= len(alts) {
-					alts = append(alts, make([]string, 10)...)
-				}
-				alts[i] = string(v)
-				i++
-			}
-		}
-	}
-	dfs(a, prefix)
-	return alts[:i]
+func (s *altStack) isEmpty() bool {
+	return s.last == nil
 }
 
-func (a *alternative) getLeaves() []*alternative {
-	var dfs func(*alternative)
-	alts := make([]*alternative, 50)
-	i := 0
-	dfs = func(n *alternative) {
-		if n.isLeave() {
-			if i >= len(alts) {
-				alts = append(alts, make([]*alternative, 10)...)
-			}
-			alts[i] = n
-			i++
+// Push adds an item at the beginning
+func (s *altStack) Push(value *atnstate) {
+	item := &stackItem{value: value, prev: s.last}
+	s.last = item
+}
 
-		} else {
-			for _, c := range n.children {
-				if c.hasNext() {
-					dfs(c.next)
-
-				}
-			}
-		}
+func (s *altStack) PeekOrCreate() *atnstate {
+	if s.last == nil {
+		s.Push(&atnstate{})
 	}
-	dfs(a)
-	return alts[:i]
+	return s.Peek()
+}
+
+// Pop takes the first element
+func (s *altStack) Pop() *atnstate {
+	item := s.last
+	s.last = item.prev
+	return item.value
+}
+
+func (s *altStack) Peek() *atnstate {
+	if s.last != nil {
+		return s.last.value
+	}
+	return nil
 }

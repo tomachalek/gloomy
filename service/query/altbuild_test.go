@@ -19,92 +19,125 @@ import (
 	"testing"
 )
 
-func TestChunkBuild(t *testing.T) {
-	c := newChunk()
-	c.addRune('x')
-	c.addRune('y')
-	c.addRune('z')
-	assert.Equal(t, "xyz", c.asString())
+func TestRuneBuild(t *testing.T) {
+	a := newState()
+	c := a.addRune('x')
+	assert.Equal(t, "x", c.asString())
 }
 
-func TestChunkResize(t *testing.T) {
-	c := newChunk()
-	for i := 0; i < 15; i++ {
-		c.addRune('x')
-	}
-	assert.Equal(t, "xxxxxxxxxxxxxxx", c.asString())
+func TestAddState(t *testing.T) {
+	a := newState()
+	a2 := a.addState()
+	assert.True(t, a.children[0] == a2)
 }
 
-func TestAddAlternative(t *testing.T) {
-	c := newChunk()
-	c.addRune('f')
-	a := c.addAlternative()
-	assert.True(t, a == c.next)
+func TestAppendState(t *testing.T) {
+	a := newState()
+	a2 := newState()
+	a3 := a.appendState(a2)
+	assert.True(t, a.children[0] == a2)
+	assert.True(t, a3 == a2)
 }
 
 func TestAddAlternativeChunks(t *testing.T) {
-	c := newChunk()
-	c.addRune('f')
-	a := c.addAlternative()
-	c1 := a.addChunk()
-	c1.addRune('o')
-	c1.addRune('x')
-	c2 := a.addChunk()
-	c2.addRune('O')
-	c2.addRune('X')
-	assert.Equal(t, "ox", a.children[0].asString())
-	assert.Equal(t, "OX", a.children[1].asString())
-	assert.Equal(t, 2, len(a.children))
+	a := newState()
+	r := a.addRune('f')
+	a2 := r.addState()
+	r21 := a2.addRune('o')
+	r21.addRune('x')
+	r31 := a2.addRune('O')
+	r31.addRune('X')
+	assert.Equal(t, "o", a2.children[0].asString())
+	assert.Equal(t, "O", a2.children[1].asString())
+	assert.Equal(t, 2, len(a2.children))
+}
+
+func TestGetEnd(t *testing.T) {
+	a := newState()
+	x1 := a.addRune('a')
+	x2 := a.addRune('b')
+	x3 := a.addRune('c')
+	b := newState()
+	x1.appendState(b)
+	x2.appendState(b)
+	x3.appendState(b)
+
+	assert.Equal(t, b, a.getLast())
 }
 
 func TestExport(t *testing.T) {
-	c := newChunk()
-	c.addRune('f')
-	a := c.addAlternative()
-	c1 := a.addChunk()
-	c1.addRune('o')
-	c1.addRune('x')
-	c2 := a.addChunk()
-	c2.addRune('O')
-	c2.addRune('X')
-	ax := c1.addAlternative()
-	c3 := ax.addChunk()
-	c3.addRune('1')
-	c4 := ax.addChunk()
-	c4.addRune('2')
-	alts := c.getAll()
+	a := newState()
+	r := a.addRune('f')
+
+	a2 := r.addState()
+	r21 := a2.addRune('o')
+	r22 := r21.addRune('x')
+	a3 := r22.addState()
+	a3.addRune('1')
+
+	a3.addRune('2')
+
+	a5 := a2.addState()
+	r51 := a5.addRune('O')
+	r51.addRune('X')
+
+	alts := a.getAll()
 	assert.Equal(t, 3, len(alts))
 	assert.Equal(t, "fox1", alts[0])
 	assert.Equal(t, "fox2", alts[1])
 	assert.Equal(t, "fOX", alts[2])
 }
 
-//
-// [c]---<a>---[c1]---<a1>
-//        |            |----[c3]----<a3>
-//        |            |-----[c4]----<a4>
-//        |
-//        |----[c2]---<a2>
-//
-func TestGetLeaves(t *testing.T) {
-	c := newChunk()
+func TestSimpleMerge(t *testing.T) {
+	a := newState()
 
-	a := c.addAlternative()
-	c1 := a.addChunk()
-	a1 := c1.addAlternative()
+	a2 := a.addState()
+	a3 := a.addState()
+	a4 := a.addState()
 
-	c2 := a.addChunk()
-	a2 := c2.addAlternative()
+	an := a.mergeAlternatives()
 
-	c3 := a1.addChunk()
-	a3 := c3.addAlternative()
+	assert.True(t, a2.children[0] == an)
+	assert.True(t, a3.children[0] == an)
+	assert.True(t, a4.children[0] == an)
+}
 
-	c4 := a1.addChunk()
-	a4 := c4.addAlternative()
+func TestRemoveChild(t *testing.T) {
+	a := newState()
+	x1 := a.addState()
+	x2 := a.addState()
+	x3 := a.addState()
+	x4 := a.addState()
+	x5 := a.addState()
+	assert.Equal(t, 5, len(a.children))
 
-	leaves := a.getLeaves()
-	assert.Equal(t, 3, len(leaves))
-	assert.Equal(t, a3, leaves[0])
-	assert.Equal(t, a4, leaves[1])
-	assert.Equal(t, a2, leaves[2])
+	a.removeChild(x3)
+	assert.Equal(t, 4, len(a.children))
+	assert.Equal(t, x1, a.children[0])
+	assert.Equal(t, x2, a.children[1])
+	assert.Equal(t, x4, a.children[2])
+	assert.Equal(t, x5, a.children[3])
+}
+
+func TestMultiLayerMerge(t *testing.T) {
+	a := &atnstate{}
+
+	a2 := a.addState()
+	a21 := a2.addState()
+
+	a3 := a.addState()
+	a31 := a3.addState()
+	a32 := a3.addState()
+
+	b := a3.mergeAlternatives()
+
+	a4 := a.addState()
+
+	c := a.mergeAlternatives()
+
+	assert.True(t, a31.children[0] == b)
+	assert.True(t, a32.children[0] == b)
+	assert.True(t, b.children[0] == c)
+	assert.True(t, a4.children[0] == c)
+	assert.True(t, a21.children[0] == c)
 }
