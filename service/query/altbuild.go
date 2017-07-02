@@ -60,12 +60,16 @@ func (a *atnstate) addRune(value rune) *atnstate {
 	})
 }
 
+func (a *atnstate) isDot() bool {
+	return a.value == '.'
+}
+
 func (a *atnstate) isLeaf() bool {
 	return len(a.children) == 0
 }
 
 func (a *atnstate) isRune() bool {
-	return a.value != '\u0000'
+	return a.value != '\u0000' && a.value != '.'
 }
 
 func (a *atnstate) hasChild(a2 *atnstate) bool {
@@ -89,25 +93,6 @@ func (a *atnstate) removeChild(child *atnstate) {
 	}
 }
 
-func (a *atnstate) mergeAlternatives() *atnstate {
-	var dfs func(*atnstate)
-	leaves := make([]*atnstate, 0, 10)
-	dfs = func(n *atnstate) {
-		if n.isLeaf() {
-			leaves = append(leaves, n)
-		}
-		for _, c := range n.children {
-			dfs(c)
-		}
-	}
-	dfs(a)
-	newItem := &atnstate{}
-	for _, item := range leaves {
-		item.appendState(newItem)
-	}
-	return newItem
-}
-
 func (a *atnstate) getAll() []string {
 	return a.getAlternatives([]rune{})
 }
@@ -118,6 +103,10 @@ func (a *atnstate) getAlternatives(prefix []rune) []string {
 
 	dfs = func(n *atnstate, prev []rune) {
 		var v []rune
+		if n.isDot() {
+			alts = append(alts, string(prev))
+			return
+		}
 		if n.value != '\u0000' {
 			v = append(prev, n.value)
 
@@ -147,6 +136,10 @@ func newRune(value rune) *atnstate {
 		children: make([]*atnstate, 0, 1),
 		value:    value,
 	}
+}
+
+func newDot() *atnstate {
+	return &atnstate{value: '.'}
 }
 
 // ------------------------------------------------------------------

@@ -143,3 +143,22 @@ func TestAlternatives6(t *testing.T) {
 	assert.Equal(t, "metadAx", alts[1])
 	assert.Equal(t, "me", alts[2])
 }
+
+func TestPlaceholder(t *testing.T) {
+	p := NewParser()
+	err := p.Parse("foo.+z")
+	alts := p.GetAllPrefixes()
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(alts))
+	assert.Equal(t, "foo", alts[0])
+}
+
+func TestPlaceholder2(t *testing.T) {
+	p := NewParser()
+	err := p.Parse("foo.*z")
+	alts := p.GetAllPrefixes()
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(alts))
+	assert.Equal(t, "foo", alts[0])
+	assert.Equal(t, "fooz", alts[1])
+}

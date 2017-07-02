@@ -124,9 +124,6 @@ func searchByPrefix(wd *wdict.WordDictReader, sindex *index.SearchableIndex, arg
 		} else {
 			res.Append(chunk)
 		}
-		if res.Size() >= args.Offset+args.Limit {
-			res.Slice(args.Offset, args.Offset+args.Limit)
-		}
 	}
 	close(ch)
 	return res
@@ -142,7 +139,7 @@ func searchByRegexp(wd *wdict.WordDictReader, sindex *index.SearchableIndex, arg
 		args2 := args.clone()
 		args2.Phrase = prefix
 		args2.QueryType = 0 // not needed here; just to keep things consistent
-		ans.Append(searchByPrefix(wd, sindex, args2))
+		ans.Append(sindex.GetNgramsOf(args2.Phrase))
 	}
 	return ans
 }
@@ -166,11 +163,10 @@ func Search(basePath string, args SearchArgs) (*SearchResult, error) {
 
 		} else {
 			res = sindex.GetNgramsOf(args.Phrase)
-			if res.Size() >= args.Offset+args.Limit {
-				res.Slice(args.Offset, args.Offset+args.Limit)
-			}
-
 		}
+	}
+	if res.Size() >= args.Offset+args.Limit {
+		res.Slice(args.Offset, args.Offset+args.Limit)
 	}
 	ans := &SearchResult{result: res, wdict: wd}
 	return ans, nil

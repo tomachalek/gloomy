@@ -88,20 +88,6 @@ func TestExport(t *testing.T) {
 	assert.Equal(t, "fOX", alts[2])
 }
 
-func TestSimpleMerge(t *testing.T) {
-	a := newState()
-
-	a2 := a.addState()
-	a3 := a.addState()
-	a4 := a.addState()
-
-	an := a.mergeAlternatives()
-
-	assert.True(t, a2.children[0] == an)
-	assert.True(t, a3.children[0] == an)
-	assert.True(t, a4.children[0] == an)
-}
-
 func TestRemoveChild(t *testing.T) {
 	a := newState()
 	x1 := a.addState()
@@ -117,27 +103,4 @@ func TestRemoveChild(t *testing.T) {
 	assert.Equal(t, x2, a.children[1])
 	assert.Equal(t, x4, a.children[2])
 	assert.Equal(t, x5, a.children[3])
-}
-
-func TestMultiLayerMerge(t *testing.T) {
-	a := &atnstate{}
-
-	a2 := a.addState()
-	a21 := a2.addState()
-
-	a3 := a.addState()
-	a31 := a3.addState()
-	a32 := a3.addState()
-
-	b := a3.mergeAlternatives()
-
-	a4 := a.addState()
-
-	c := a.mergeAlternatives()
-
-	assert.True(t, a31.children[0] == b)
-	assert.True(t, a32.children[0] == b)
-	assert.True(t, b.children[0] == c)
-	assert.True(t, a4.children[0] == c)
-	assert.True(t, a21.children[0] == c)
 }

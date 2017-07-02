@@ -89,7 +89,7 @@ func (p *Parser) parseRegex() error {
 	var err error
 	c := p.currChar()
 	switch c {
-	case isAlnum(c), '(', '[':
+	case isAlnum(c), '(', '[', '.':
 		err = p.parseTerm()
 		if err != nil {
 			break
@@ -107,7 +107,7 @@ func (p *Parser) parseRegexRest() error {
 	var err error
 	c := p.currChar()
 	switch c {
-	case '(', '[', isAlnum(c):
+	case '(', '[', isAlnum(c), '.':
 		err = p.parseRegex()
 		lastState := p.stack.Pop()
 		p.stack.Peek().getLast().appendState(lastState)
@@ -128,7 +128,7 @@ func (p *Parser) parseTerm() error {
 	var err error
 	c := p.currChar()
 	switch c {
-	case '(', '[', isAlnum(c):
+	case '(', '[', isAlnum(c), '.':
 		err = p.parseFactor()
 		if err != nil {
 			break
@@ -174,7 +174,7 @@ func (p *Parser) parseTermRest() error {
 		t1.getLast().appendState(joinState)
 		t2.getLast().appendState(joinState)
 		p.stack.Push(forkState)
-	case '(', ')', '[', isAlnum(c), '\u0003':
+	case '(', ')', '[', isAlnum(c), '.', '\u0003':
 		break
 	default:
 		err = fmt.Errorf("Parse error [nonterm T']")
@@ -212,6 +212,9 @@ func (p *Parser) parseFactor() error {
 		}
 	case isAlnum(c):
 		p.stack.Push(newRune(c))
+		p.fetchNextChar()
+	case '.':
+		p.stack.Push(newDot())
 		p.fetchNextChar()
 	default:
 		err = fmt.Errorf("Parse error [nonterm F]")
