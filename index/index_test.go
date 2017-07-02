@@ -107,6 +107,16 @@ func TestNgramSearchResultAppend(t *testing.T) {
 	assert.True(t, r1.curr == r1.first)
 }
 
+func TestNgramAppendNonemptyToEmpty(t *testing.T) {
+	r1 := NgramSearchResult{}
+	r2 := createSimpleResult()
+	r1.Append(r2)
+	assert.Equal(t, 3, r1.Size())
+	assert.True(t, r1.last == r2.last)
+	assert.True(t, r1.first == r2.first)
+	assert.True(t, r1.curr == r1.first)
+}
+
 func TestNgramSearchResultSlice(t *testing.T) {
 	r := &NgramSearchResult{}
 	for i := 0; i < 20; i++ {

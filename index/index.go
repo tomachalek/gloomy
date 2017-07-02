@@ -63,7 +63,13 @@ type NgramSearchResult struct {
 }
 
 func (nsr *NgramSearchResult) Append(other *NgramSearchResult) {
-	nsr.last.next = other.first
+	if nsr.last != nil {
+		nsr.last.next = other.first
+
+	} else {
+		nsr.first = other.first
+		nsr.curr = nsr.first
+	}
 	nsr.last = other.last
 	nsr.size += other.size
 }

@@ -84,8 +84,14 @@ func (s serviceHandler) route(p []string, args map[string][]string) (interface{}
 		if err != nil {
 			return nil, newServerError(err, 500)
 		}
-		res, err := Search(s.conf.DataPath, args["corpus"][0], args["q"][0], args["attrs"],
-			offset, limit)
+		queryArgs := SearchArgs{
+			CorpusID: args["corpus"][0],
+			Phrase:   args["q"][0],
+			Attrs:    args["attrs"],
+			Offset:   offset,
+			Limit:    limit,
+		}
+		res, err := Search(s.conf.DataPath, queryArgs)
 		t2 := time.Since(t1)
 		if err != nil {
 			return nil, newServerError(err, 500)
