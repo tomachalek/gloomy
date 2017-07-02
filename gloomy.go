@@ -82,10 +82,18 @@ func loadSearchConf(confBasePath string) *gconf.SearchConf {
 	return gconf.LoadSearchConf(confBasePath)
 }
 
-func searchCLI(confBasePath string, corpus string, query string, attrs []string, offset int, limit int) {
+func searchCLI(confBasePath string, corpus string, query string, attrs []string, offset int, limit int, queryType int) {
 	conf := loadSearchConf(confBasePath)
 	t1 := time.Now()
-	ans, err := service.Search(conf.DataPath, corpus, query, attrs, offset, limit)
+	args := service.SearchArgs{
+		CorpusID:  corpus,
+		Phrase:    query,
+		QueryType: queryType,
+		Attrs:     attrs,
+		Offset:    offset,
+		Limit:     limit,
+	}
+	ans, err := service.Search(conf.DataPath, args)
 	if err != nil {
 		log.Printf("Srch error: %s", err)
 	}
@@ -115,6 +123,7 @@ func main() {
 	metadataAttrs := flag.String("attrs", "", "Metadata attributes separated by comma")
 	resultLimit := flag.Int("limit", -1, "Result limit")
 	resultOffset := flag.Int("offset", 0, "Result offset (starting from zero)")
+	queryType := flag.Int("qtype", 0, "Query type (0 = default, 1 = regexp)")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
@@ -138,7 +147,7 @@ func main() {
 				log.Fatal("Missing argument (both corpus and query must be specified)")
 			}
 			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), parseAttrs(*metadataAttrs),
-				*resultOffset, *resultLimit)
+				*resultOffset, *resultLimit, *queryType)
 		default:
 			panic("Unknown action")
 		}

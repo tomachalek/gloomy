@@ -16,6 +16,7 @@ package service
 
 import (
 	"github.com/tomachalek/gloomy/index"
+	"github.com/tomachalek/gloomy/service/query"
 	"github.com/tomachalek/gloomy/wdict"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,30 @@ type SearchResultItem struct {
 	Ngram []string `json:"ngram"`
 	Count int      `json:"count"`
 	Args  []string `json:"args"`
+}
+
+// --------------------------------------------------------------
+
+type SearchArgs struct {
+	CorpusID  string
+	Phrase    string
+	Attrs     []string
+	Offset    int
+	Limit     int
+	QueryType int
+}
+
+func (s SearchArgs) clone() SearchArgs {
+	var newAttrs []string
+	copy(newAttrs, s.Attrs)
+	return SearchArgs{
+		CorpusID:  s.CorpusID,
+		Phrase:    s.Phrase,
+		Attrs:     newAttrs,
+		Offset:    s.Offset,
+		Limit:     s.Limit,
+		QueryType: s.QueryType,
+	}
 }
 
 // ---------------------------------------------------------------
@@ -79,47 +104,73 @@ func translateWidxToColIdx(index *index.SearchableIndex, indices []int) []int {
 	return indices[:wi]
 }
 
-func Search(basePath string, corpusId string, phrase string, attrs []string, offset int, limit int) (*SearchResult, error) {
-	fullPath := filepath.Join(basePath, corpusId)
-	gindex := index.LoadNgramIndex(fullPath, attrs)
+func searchByPrefix(wd *wdict.WordDictReader, sindex *index.SearchableIndex, args SearchArgs) *index.NgramSearchResult {
+	var res *index.NgramSearchResult
+	indices := wd.FindByPrefix(args.Phrase[:len(args.Phrase)-1])
+	indices = translateWidxToColIdx(sindex, indices)
+	loadRange(sindex, indices)
+	ch := make(chan *index.NgramSearchResult, len(indices))
+	for _, colIdx := range indices {
+		go func(v int) {
+			ch <- sindex.GetNgramsOfColIdx(v)
+		}(colIdx)
+	}
+	var chunk *index.NgramSearchResult
+	for range indices {
+		chunk = <-ch
+		if res == nil {
+			res = chunk
+
+		} else {
+			res.Append(chunk)
+		}
+		if res.Size() >= args.Offset+args.Limit {
+			res.Slice(args.Offset, args.Offset+args.Limit)
+		}
+	}
+	close(ch)
+	return res
+}
+
+func searchByRegexp(wd *wdict.WordDictReader, sindex *index.SearchableIndex, args SearchArgs) *index.NgramSearchResult {
+	parser := query.NewParser()
+	parser.Parse(args.Phrase)
+	prefixes := parser.GetAllPrefixes()
+
+	ans := &index.NgramSearchResult{}
+	for _, prefix := range prefixes {
+		args2 := args.clone()
+		args2.Phrase = prefix
+		args2.QueryType = 0 // not needed here; just to keep things consistent
+		ans.Append(searchByPrefix(wd, sindex, args2))
+	}
+	return ans
+}
+
+func Search(basePath string, args SearchArgs) (*SearchResult, error) {
+	fullPath := filepath.Join(basePath, args.CorpusID)
+	gindex := index.LoadNgramIndex(fullPath, args.Attrs)
 	wd, err := wdict.LoadWordDict(fullPath)
 	if err != nil {
 		return nil, err
 	}
 	sindex := index.OpenSearchableIndex(gindex, wd)
-
 	var res *index.NgramSearchResult
-	if strings.HasSuffix(phrase, "*") {
-		indices := wd.FindByPrefix(phrase[:len(phrase)-1])
-		indices = translateWidxToColIdx(sindex, indices)
-		loadRange(sindex, indices)
-		ch := make(chan *index.NgramSearchResult, len(indices))
-		for _, colIdx := range indices {
-			go func(v int) {
-				ch <- sindex.GetNgramsOfColIdx(v)
-			}(colIdx)
-		}
-		var chunk *index.NgramSearchResult
-		for range indices {
-			chunk = <-ch
-			if res == nil {
-				res = chunk
 
-			} else {
-				res.Append(chunk)
-			}
-			if res.Size() >= offset+limit {
-				res.Slice(offset, offset+limit)
-			}
-		}
-		close(ch)
+	if args.QueryType == 1 {
+		res = searchByRegexp(wd, sindex, args)
 
 	} else {
-		res = sindex.GetNgramsOf(phrase)
-		if res.Size() >= offset+limit {
-			res.Slice(offset, offset+limit)
-		}
+		if strings.HasSuffix(args.Phrase, "*") {
+			res = searchByPrefix(wd, sindex, args)
 
+		} else {
+			res = sindex.GetNgramsOf(args.Phrase)
+			if res.Size() >= args.Offset+args.Limit {
+				res.Slice(args.Offset, args.Offset+args.Limit)
+			}
+
+		}
 	}
 	ans := &SearchResult{result: res, wdict: wd}
 	return ans, nil
