@@ -96,9 +96,9 @@ gloomy search -qtype regexp susanne "dogs?"
 
 Please note that *Gloomy*'s support of regular expressions is limited:
 
-1. *.*, *[abc]*, *a?*, *a.\**, *a+*, *(foo)*
+1. *.* (dot), *[abc]*, *a?*, *a.\**, *a+*, *(foo)*
 3. no character groups (e.g. *\\w*, *\\s*)
-2. alternation (the *|* operator) behaves differently - it has highest priority:
+2. alternation (the *|* operator) behaves differently - it has the highest priority:
    * *foo|bar* translates into either *fooar* or *fobar*
    * use *(foo)|(bar)* to get either *foo* or *bar*
 
@@ -108,13 +108,17 @@ Please note that *Gloomy*'s support of regular expressions is limited:
 **Command line**:
 
 ```
-gloomy seaerch --attrs doc.file,doc.n susanne absolute
+gloomy search --attrs doc.file,doc.n susanne absolute
 ```
 
 In **HTTP server mode** use multi-value attribute:
 
 ```
 http://localhost:8090/search?corpus=susanne&q=from&attrs=doc.file&attrs=doc.n
+```
+
+```
+http://localhost:8090/search?corpus=susanne&qtype=regexp&q=dogs%3F&attrs=doc.file&attrs=doc.n
 ```
 
 
