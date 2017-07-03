@@ -56,7 +56,7 @@ gloomy search corpname phrase
 Start a server:
 
 ```
-gloomy search-service 
+gloomy search-service
 ```
 
 Test a client:
@@ -86,6 +86,21 @@ gloomy search susanne abs*
 ```
 
 ... searches for all the n-grams where the first token starts with *abs\**
+
+
+Search by a regular expression:
+
+```
+gloomy search -qtype regexp susanne "dogs?"
+```
+
+Please note that *Gloomy*'s support of regular expressions is limited:
+
+1. *.*, *[abc]*, *a?*, *a.\**, *a+*, *(foo)*
+3. no character groups (e.g. *\\w*, *\\s*)
+2. alternation (the *|* operator) behaves differently - it has highest priority:
+   * *foo|bar* translates into either *fooar* or *fobar*
+   * use *(foo)|(bar)* to get either *foo* or *bar*
 
 
 ### Metadata retrieval
