@@ -154,10 +154,10 @@ func searchByRegexp(wd *wdict.WordDictReader, sindex *index.SearchableIndex, arg
 	rgList := []*regexp.Regexp{rg} // TODO currently only the fist word
 	ans.Filter(func(v *index.NgramResultItem) bool {
 		ngram := wd.DecodeNgram(v.Ngram)
-		matches := true
+		matches := false
 		for i, ptr := range rgList {
 			if ptr.MatchString(ngram[i]) {
-				matches = false
+				matches = true
 				break
 			}
 		}

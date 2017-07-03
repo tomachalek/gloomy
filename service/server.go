@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tomachalek/gloomy/index/gconf"
+	"github.com/tomachalek/gloomy/util"
 	"log"
 	"net/http"
 	"strconv"
@@ -54,12 +55,30 @@ func newServerError(desc interface{}, code int) ServerError {
 	}
 }
 
+func ImportQueryType(qtype string) int {
+	switch qtype {
+	case "regexp":
+		return 1
+	case "default":
+		return 0
+	}
+	return -1
+}
+
 // ------------------------------------------------------
 
 func fetchIntArg(args map[string][]string, key string, dflt int) (int, error) {
 	v, ok := args[key]
 	if ok {
 		return strconv.Atoi(v[0])
+	}
+	return dflt, nil
+}
+
+func fetchStringArg(args map[string][]string, key string, dflt string) (string, error) {
+	v, ok := args[key]
+	if ok {
+		return v[0], nil
 	}
 	return dflt, nil
 }
@@ -77,19 +96,21 @@ type serviceHandler struct {
 func (s serviceHandler) route(p []string, args map[string][]string) (interface{}, ServerError) {
 	switch p[0] {
 	case "search":
-		var err error
+		var err1, err2, err3 error
 		t1 := time.Now()
-		offset, err := fetchIntArg(args, "offset", 0)
-		limit, err := fetchIntArg(args, "limit", -1)
-		if err != nil {
+		offset, err1 := fetchIntArg(args, "offset", 0)
+		limit, err2 := fetchIntArg(args, "limit", -1)
+		qtype, err3 := fetchStringArg(args, "qtype", "default")
+		if err := util.FirstError(err1, err2, err3); err != nil {
 			return nil, newServerError(err, 500)
 		}
 		queryArgs := SearchArgs{
-			CorpusID: args["corpus"][0],
-			Phrase:   args["q"][0],
-			Attrs:    args["attrs"],
-			Offset:   offset,
-			Limit:    limit,
+			CorpusID:  args["corpus"][0],
+			Phrase:    args["q"][0],
+			QueryType: ImportQueryType(qtype),
+			Attrs:     args["attrs"],
+			Offset:    offset,
+			Limit:     limit,
 		}
 		res, err := Search(s.conf.DataPath, queryArgs)
 		t2 := time.Since(t1)
