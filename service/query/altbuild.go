@@ -84,7 +84,6 @@ func (a *atnstate) hasChild(a2 *atnstate) bool {
 func (a *atnstate) removeChild(child *atnstate) {
 	for i, c := range a.children {
 		if c == child {
-			fmt.Println("REMOVE CHILD ", i)
 			copy(a.children[i:], a.children[i+1:])
 			a.children[len(a.children)-1] = nil
 			a.children = a.children[:len(a.children)-1]
@@ -104,7 +103,8 @@ func (a *atnstate) getAlternatives(prefix []rune) []string {
 	dfs = func(n *atnstate, prev []rune) {
 		var v []rune
 		if n.isDot() {
-			alts = append(alts, string(prev))
+			v = append(prev, '*')
+			alts = append(alts, string(v))
 			return
 		}
 		if n.value != '\u0000' {

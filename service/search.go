@@ -15,10 +15,12 @@
 package service
 
 import (
+	"fmt"
 	"github.com/tomachalek/gloomy/index"
 	"github.com/tomachalek/gloomy/service/query"
 	"github.com/tomachalek/gloomy/wdict"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -78,6 +80,8 @@ func (sr *SearchResult) Next() *SearchResultItem {
 	}
 	return nil
 }
+
+// ---------------------------------------------------------------
 
 func loadRange(index *index.SearchableIndex, indices []int) {
 	min := indices[0]
@@ -139,8 +143,26 @@ func searchByRegexp(wd *wdict.WordDictReader, sindex *index.SearchableIndex, arg
 		args2 := args.clone()
 		args2.Phrase = prefix
 		args2.QueryType = 0 // not needed here; just to keep things consistent
-		ans.Append(sindex.GetNgramsOf(args2.Phrase))
+		if strings.HasSuffix(args2.Phrase, "*") {
+			ans.Append(searchByPrefix(wd, sindex, args2))
+
+		} else {
+			ans.Append(sindex.GetNgramsOf(args2.Phrase))
+		}
 	}
+	rg := regexp.MustCompile(fmt.Sprintf("^%s$", args.Phrase))
+	rgList := []*regexp.Regexp{rg} // TODO currently only the fist word
+	ans.Filter(func(v *index.NgramResultItem) bool {
+		ngram := wd.DecodeNgram(v.Ngram)
+		matches := true
+		for i, ptr := range rgList {
+			if ptr.MatchString(ngram[i]) {
+				matches = false
+				break
+			}
+		}
+		return matches
+	})
 	return ans
 }
 

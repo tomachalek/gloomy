@@ -33,14 +33,8 @@ const (
 	MaxNgramSize = 10
 )
 
-type ngramResultItem struct {
-	next     *ngramResultItem
-	ngram    []int
-	count    int
-	metadata []string
-}
-
-type NgramResultValue struct {
+type NgramResultItem struct {
+	next     *NgramResultItem
 	Ngram    []int
 	Count    int
 	Metadata []string
@@ -56,9 +50,9 @@ type NgramResultValue struct {
 // methods) rather than copying all the result
 // data into an array.
 type NgramSearchResult struct {
-	first *ngramResultItem
-	curr  *ngramResultItem
-	last  *ngramResultItem
+	first *NgramResultItem
+	curr  *NgramResultItem
+	last  *NgramResultItem
 	size  int
 }
 
@@ -72,6 +66,38 @@ func (nsr *NgramSearchResult) Append(other *NgramSearchResult) {
 	}
 	nsr.last = other.last
 	nsr.size += other.size
+}
+
+// RemoveNext removes the following item to the 'v' one.
+// In case v is nil, first item is removed.
+// The function call resets iterator to the first item.
+func (nsr *NgramSearchResult) RemoveNext(v *NgramResultItem) *NgramResultItem {
+	var rmitem *NgramResultItem
+	if v == nil { // remove first
+		rmitem = nsr.first
+		nsr.first = nsr.first.next
+
+	} else {
+		rmitem = v.next
+		v.next = rmitem.next
+		if nsr.last == rmitem {
+			nsr.last = v
+		}
+	}
+	nsr.curr = nsr.first
+	nsr.size--
+	return rmitem
+}
+
+func (nsr *NgramSearchResult) Filter(fn func(*NgramResultItem) bool) {
+	var prev, curr *NgramResultItem
+	curr = nsr.first
+	for curr != nil {
+		if !fn(curr) {
+			curr = nsr.RemoveNext(prev)
+		}
+		prev, curr = curr, curr.next
+	}
 }
 
 // Slice slices internal list preserving items starting
@@ -125,21 +151,17 @@ func (nsr *NgramSearchResult) HasNext() bool {
 }
 
 // Next returs a following result item.
-func (nsr *NgramSearchResult) Next() *NgramResultValue {
+func (nsr *NgramSearchResult) Next() *NgramResultItem {
 	ans := nsr.curr
 	if ans == nil {
 		return nil
 	}
 	nsr.curr = nsr.curr.next
-	return &NgramResultValue{
-		Ngram:    ans.ngram,
-		Count:    ans.count,
-		Metadata: ans.metadata,
-	}
+	return ans
 }
 
 func (nsr *NgramSearchResult) addValue(ngram []int, count int, metadata []string) {
-	item := &ngramResultItem{ngram: ngram, count: count, metadata: metadata}
+	item := &NgramResultItem{Ngram: ngram, Count: count, Metadata: metadata}
 	if nsr.first == nil {
 		nsr.first = item
 	}
