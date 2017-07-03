@@ -22,15 +22,15 @@ import (
 
 func createSimpleResult() *NgramSearchResult {
 	r := &NgramSearchResult{}
-	item1 := &ngramResultItem{}
-	item1.ngram = []int{0}
+	item1 := &NgramResultItem{}
+	item1.Ngram = []int{0}
 	r.first = item1
 	r.curr = item1
-	item2 := &ngramResultItem{}
-	item2.ngram = []int{1}
+	item2 := &NgramResultItem{}
+	item2.Ngram = []int{1}
 	item1.next = item2
-	item3 := &ngramResultItem{}
-	item3.ngram = []int{2}
+	item3 := &NgramResultItem{}
+	item3.Ngram = []int{2}
 	item2.next = item3
 	r.last = item3
 	r.size = 3
@@ -39,15 +39,15 @@ func createSimpleResult() *NgramSearchResult {
 
 func createAnotherResult() *NgramSearchResult {
 	r := &NgramSearchResult{}
-	item1 := &ngramResultItem{}
-	item1.ngram = []int{3}
+	item1 := &NgramResultItem{}
+	item1.Ngram = []int{3}
 	r.first = item1
 	r.curr = item1
-	item2 := &ngramResultItem{}
-	item2.ngram = []int{4}
+	item2 := &NgramResultItem{}
+	item2.Ngram = []int{4}
 	item1.next = item2
-	item3 := &ngramResultItem{}
-	item3.ngram = []int{5}
+	item3 := &NgramResultItem{}
+	item3.Ngram = []int{5}
 	item2.next = item3
 	r.last = item3
 	r.size = 3
@@ -125,10 +125,10 @@ func TestNgramSearchResultSlice(t *testing.T) {
 	r.Slice(10, 15)
 
 	assert.Equal(t, 5, r.Size())
-	assert.Equal(t, 10, r.first.ngram[0])
+	assert.Equal(t, 10, r.first.Ngram[0])
 	assert.True(t, r.last == r.first.next.next.next.next)
 	assert.Nil(t, r.first.next.next.next.next.next)
-	assert.Equal(t, 14, r.first.next.next.next.next.ngram[0])
+	assert.Equal(t, 14, r.first.next.next.next.next.Ngram[0])
 	assert.True(t, r.first == r.curr)
 }
 
@@ -170,4 +170,19 @@ func TestNgramSearchResultSliceTooBigRight(t *testing.T) {
 	assert.Panics(t, func() {
 		r.Slice(-1, 10)
 	})
+}
+
+func TestNgramSearchResultRemoveFirst(t *testing.T) {
+	r := createSimpleResult()
+	r.Next()
+	r2 := r.Next()
+	r3 := r.Next()
+	r.ResetCursor()
+	r.RemoveNext(nil)
+	assert.Equal(t, 2, r.Size())
+	assert.Equal(t, r2, r.Next())
+	assert.Equal(t, r3, r.Next())
+	assert.Equal(t, r2, r.first)
+	assert.Equal(t, r3, r.last)
+
 }

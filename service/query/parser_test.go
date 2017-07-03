@@ -150,7 +150,7 @@ func TestPlaceholder(t *testing.T) {
 	alts := p.GetAllPrefixes()
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(alts))
-	assert.Equal(t, "foo", alts[0])
+	assert.Equal(t, "foo*", alts[0])
 }
 
 func TestPlaceholder2(t *testing.T) {
@@ -159,6 +159,6 @@ func TestPlaceholder2(t *testing.T) {
 	alts := p.GetAllPrefixes()
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(alts))
-	assert.Equal(t, "foo", alts[0])
+	assert.Equal(t, "foo*", alts[0])
 	assert.Equal(t, "fooz", alts[1])
 }

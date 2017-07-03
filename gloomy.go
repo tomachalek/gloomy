@@ -123,7 +123,11 @@ func main() {
 	metadataAttrs := flag.String("attrs", "", "Metadata attributes separated by comma")
 	resultLimit := flag.Int("limit", -1, "Result limit")
 	resultOffset := flag.Int("offset", 0, "Result offset (starting from zero)")
-	queryType := flag.Int("qtype", 0, "Query type (0 = default, 1 = regexp)")
+	queryType := flag.String("qtype", "default", "Query type (0 = default, 1 = regexp)")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage:\n\t%s [options] [action] [config.json]\n\nAavailable actions:\n\tsearch, search-service, create-index, extract-ngrams\n\nOptions:\n", filepath.Base(os.Args[0]))
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
@@ -146,8 +150,12 @@ func main() {
 			if flag.Arg(1) == "" || flag.Arg(2) == "" {
 				log.Fatal("Missing argument (both corpus and query must be specified)")
 			}
+			qtype := service.ImportQueryType(*queryType)
+			if qtype < 0 {
+				panic(fmt.Sprintf("Unknown query type: %s", *queryType))
+			}
 			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), parseAttrs(*metadataAttrs),
-				*resultOffset, *resultLimit, *queryType)
+				*resultOffset, *resultLimit, qtype)
 		default:
 			panic("Unknown action")
 		}
