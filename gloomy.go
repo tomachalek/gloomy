@@ -34,6 +34,7 @@ const (
 	extractNgramsAction = "extract-ngrams"
 	searchServiceAction = "search-service"
 	searchAction        = "search"
+	appVersion          = "0.1.0"
 )
 
 func help() {
@@ -107,7 +108,7 @@ func searchCLI(confBasePath string, corpus string, query string, attrs []string,
 
 func startSearchService(confBasePath string) {
 	conf := loadSearchConf(confBasePath)
-	service.Serve(conf)
+	service.Serve(conf, appVersion)
 }
 
 func parseAttrs(attrStr string) []string {
