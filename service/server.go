@@ -26,35 +26,45 @@ import (
 	"time"
 )
 
+// ServerError represents a general HTTP server error
+// which is expected to be JSON-exportable
 type ServerError interface {
-	Error() string
-	Code() int
+	ToJSON() string
+	HTTPCode() int
 }
 
+// DefaultServerError is a basic implementation of
+// ServerError used here in server.go
 type DefaultServerError struct {
-	message string
-	code    int
+	Message string `json:"message"`
+	Code    int    `json:"code"`
 }
 
-func (e DefaultServerError) Error() string {
-	return e.message
+// ToJSON converts error to JSON
+func (e DefaultServerError) ToJSON() string {
+	errAns, _ := json.Marshal(e)
+	return string(errAns)
 }
 
-func (e DefaultServerError) Code() int {
-	return e.code
+// HTTPCode returns a numeric HTTP code of the error
+// (typically 40x, 50x)
+func (e DefaultServerError) HTTPCode() int {
+	return e.Code
 }
 
 func newServerError(desc interface{}, code int) ServerError {
 	switch desc.(type) {
 	case error:
-		return DefaultServerError{message: desc.(error).Error(), code: code}
+		return DefaultServerError{Message: desc.(error).Error(), Code: code}
 	case string:
-		return DefaultServerError{message: desc.(string), code: code}
+		return DefaultServerError{Message: desc.(string), Code: code}
 	default:
-		return DefaultServerError{message: "Unknow error", code: code}
+		return DefaultServerError{Message: "Unknow error", Code: code}
 	}
 }
 
+// ImportQueryType imports end-user encoded query type (default, regexp)
+// to internal numeric ones. Returns -1 in case query type is not found.
 func ImportQueryType(qtype string) int {
 	switch qtype {
 	case "regexp":
@@ -83,52 +93,90 @@ func fetchStringArg(args map[string][]string, key string, dflt string) (string, 
 	return dflt, nil
 }
 
-func (s serviceHandler) parsePath(p string) []string {
-	return strings.Split(strings.Trim(p, "/"), "/")
+func requireStringArg(args map[string][]string, key string) (string, error) {
+	v, ok := args[key]
+	if ok && len(v) > 0 {
+		return v[0], nil
+	}
+	return "", fmt.Errorf("Argument '%s' not found", key)
 }
 
 // ------------------------------------------------------
 
 type serviceHandler struct {
-	conf *gconf.SearchConf
+	appVersion  string
+	conf        *gconf.SearchConf
+	runningJobs map[string]chan []*SearchResultItem
 }
 
-func (s serviceHandler) route(p []string, args map[string][]string) (interface{}, ServerError) {
-	switch p[0] {
-	case "search":
-		var err1, err2, err3 error
-		t1 := time.Now()
-		offset, err1 := fetchIntArg(args, "offset", 0)
-		limit, err2 := fetchIntArg(args, "limit", -1)
-		qtype, err3 := fetchStringArg(args, "qtype", "default")
-		if err := util.FirstError(err1, err2, err3); err != nil {
-			return nil, newServerError(err, 500)
-		}
-		queryArgs := SearchArgs{
-			CorpusID:  args["corpus"][0],
-			Phrase:    args["q"][0],
-			QueryType: ImportQueryType(qtype),
-			Attrs:     args["attrs"],
-			Offset:    offset,
-			Limit:     limit,
-		}
-		res, err := Search(s.conf.DataPath, queryArgs)
-		t2 := time.Since(t1)
-		if err != nil {
-			return nil, newServerError(err, 500)
-		}
-		rows := make([]*SearchResultItem, res.Size())
-		for i := 0; res.HasNext(); i++ {
-			rows[i] = res.Next()
-		}
-		return &resultRowsResp{Size: res.Size(), Rows: rows, SearchTime: t2.Seconds()}, nil
+func (s *serviceHandler) parsePath(p string) []string {
+	return strings.Split(strings.Trim(p, "/"), "/")
+}
 
+func (s *serviceHandler) addJob(key string) (chan []*SearchResultItem, error) {
+	_, ok := s.runningJobs[key]
+	if !ok {
+		s.runningJobs[key] = make(chan []*SearchResultItem)
+		return s.runningJobs[key], nil
+	}
+	return nil, fmt.Errorf("Job %s already present", key)
+}
+
+func (s *serviceHandler) actionSearch(p []string, args map[string][]string) (interface{}, ServerError) {
+	var err1, err2, err3, err4, err5 error
+	t1 := time.Now()
+	offset, err1 := fetchIntArg(args, "offset", 0)
+	limit, err2 := fetchIntArg(args, "limit", -1)
+	qtype, err3 := fetchStringArg(args, "qtype", "default")
+	corpusID, err4 := requireStringArg(args, "corpus")
+	query, err5 := requireStringArg(args, "q")
+	if err := util.FirstError(err1, err2, err3, err4, err5); err != nil {
+		return nil, newServerError(err, 500)
+	}
+	queryArgs := SearchArgs{
+		CorpusID:  corpusID,
+		Phrase:    query,
+		QueryType: ImportQueryType(qtype),
+		Attrs:     args["attrs"],
+		Offset:    offset,
+		Limit:     limit,
+	}
+	res, err := Search(s.conf.DataPath, queryArgs)
+	t2 := time.Since(t1)
+	if err != nil {
+		return nil, newServerError(err, 500)
+	}
+	rows := make([]*SearchResultItem, res.Size())
+	for i := 0; res.HasNext(); i++ {
+		rows[i] = res.Next()
+	}
+	return &resultRowsResp{Size: res.Size(), Rows: rows, SearchTime: t2.Seconds()}, nil
+}
+
+func (s *serviceHandler) actionInfo(p []string, args map[string][]string) (interface{}, ServerError) {
+	ans := make(map[string]string)
+	ans["name"] = "Gloomy - the n-gram database"
+	ans["version"] = s.appVersion
+	return ans, nil
+}
+
+func (s *serviceHandler) route(path []string, args map[string][]string) (interface{}, ServerError) {
+	switch path[0] {
+	case "":
+		return s.actionInfo(path, args)
+	case "search":
+		return s.actionSearch(path, args)
 	default:
-		return nil, newServerError("Function not found", http.StatusNotFound)
+		return nil, newServerError(fmt.Sprintf("Action '%s' not found", path[0]), http.StatusNotFound)
 	}
 }
 
-func (s serviceHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (s *serviceHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			http.Error(resp, fmt.Sprintf("%s", r), 500)
+		}
+	}()
 	resp.Header().Set("Content-Type", "application/json")
 	values := req.URL.Query()
 	ans, procErr := s.route(s.parsePath(req.URL.Path), values)
@@ -140,15 +188,18 @@ func (s serviceHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		}
 
 	} else {
-		http.Error(resp, http.StatusText(procErr.Code()), procErr.Code())
+		http.Error(resp, procErr.ToJSON(), procErr.HTTPCode())
 	}
 }
 
 // ------------------------------------------------------
 
 // Serve starts a simple HTTP server
-func Serve(conf *gconf.SearchConf) {
-	h := serviceHandler{conf: conf}
+func Serve(conf *gconf.SearchConf, appVersion string) {
+	h := &serviceHandler{
+		conf:       conf,
+		appVersion: appVersion,
+	}
 	addr := fmt.Sprintf("%s:%d", conf.ServerAddress, conf.ServerPort)
 	s := &http.Server{
 		Addr:           addr,
