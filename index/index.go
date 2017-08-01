@@ -76,6 +76,7 @@ func (nsr *NgramSearchResult) RemoveNext(v *NgramResultItem) *NgramResultItem {
 	if v == nil { // remove first
 		rmitem = nsr.first
 		nsr.first = nsr.first.next
+		nsr.curr = nsr.first
 
 	} else {
 		rmitem = v.next
@@ -84,8 +85,8 @@ func (nsr *NgramSearchResult) RemoveNext(v *NgramResultItem) *NgramResultItem {
 			nsr.last = v
 		}
 	}
-	nsr.curr = nsr.first
 	nsr.size--
+	rmitem.next = nil
 	return rmitem
 }
 
@@ -94,9 +95,12 @@ func (nsr *NgramSearchResult) Filter(fn func(*NgramResultItem) bool) {
 	curr = nsr.first
 	for curr != nil {
 		if !fn(curr) {
-			curr = nsr.RemoveNext(prev)
+			curr = curr.next
+			nsr.RemoveNext(prev)
+
+		} else {
+			prev, curr = curr, curr.next
 		}
-		prev, curr = curr, curr.next
 	}
 }
 
