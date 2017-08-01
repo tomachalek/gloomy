@@ -15,9 +15,8 @@
 package index
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func createSimpleResult() *NgramSearchResult {
@@ -32,8 +31,14 @@ func createSimpleResult() *NgramSearchResult {
 	item3 := &NgramResultItem{}
 	item3.Ngram = []int{2}
 	item2.next = item3
-	r.last = item3
-	r.size = 3
+	item4 := &NgramResultItem{}
+	item4.Ngram = []int{3}
+	item3.next = item4
+	item5 := &NgramResultItem{}
+	item5.Ngram = []int{4}
+	item4.next = item5
+	r.last = item5
+	r.size = 5
 	return r
 }
 
@@ -88,12 +93,12 @@ func TestNGramSearchResultResetCursor(t *testing.T) {
 
 func TestNgramSearchResultIter2(t *testing.T) {
 	r := createSimpleResult()
-	tst := make([]int, 3)
+	tst := make([]int, 5)
 
 	for i := 0; r.HasNext(); i++ {
 		tst[i] = r.Next().Ngram[0]
 	}
-	assert.Equal(t, []int{0, 1, 2}, tst)
+	assert.Equal(t, []int{0, 1, 2, 3, 4}, tst)
 }
 
 func TestNgramSearchResultAppend(t *testing.T) {
@@ -101,8 +106,8 @@ func TestNgramSearchResultAppend(t *testing.T) {
 	r2 := createAnotherResult()
 	r1.Append(r2)
 
-	assert.Equal(t, 6, r1.Size())
-	assert.True(t, r1.first.next.next.next == r2.first)
+	assert.Equal(t, 8, r1.Size())
+	assert.True(t, r1.first.next.next.next.next.next == r2.first)
 	assert.True(t, r1.last == r2.last)
 	assert.True(t, r1.curr == r1.first)
 }
@@ -111,7 +116,7 @@ func TestNgramAppendNonemptyToEmpty(t *testing.T) {
 	r1 := NgramSearchResult{}
 	r2 := createSimpleResult()
 	r1.Append(r2)
-	assert.Equal(t, 3, r1.Size())
+	assert.Equal(t, 5, r1.Size())
 	assert.True(t, r1.last == r2.last)
 	assert.True(t, r1.first == r2.first)
 	assert.True(t, r1.curr == r1.first)
@@ -174,15 +179,99 @@ func TestNgramSearchResultSliceTooBigRight(t *testing.T) {
 
 func TestNgramSearchResultRemoveFirst(t *testing.T) {
 	r := createSimpleResult()
-	r.Next()
+	r1 := r.Next()
 	r2 := r.Next()
 	r3 := r.Next()
+	r4 := r.Next()
+	r5 := r.Next()
 	r.ResetCursor()
-	r.RemoveNext(nil)
-	assert.Equal(t, 2, r.Size())
+	rRemoved := r.RemoveNext(nil)
+	assert.True(t, r1 == rRemoved)
+	assert.Nil(t, rRemoved.next)
+	assert.Equal(t, 4, r.Size())
+	assert.Equal(t, r2, r.first)
 	assert.Equal(t, r2, r.Next())
 	assert.Equal(t, r3, r.Next())
-	assert.Equal(t, r2, r.first)
-	assert.Equal(t, r3, r.last)
+	assert.Equal(t, r4, r.Next())
+	assert.Equal(t, r5, r.Next())
+	assert.Equal(t, r5, r.last)
+}
 
+func TestNgramSearchResultRemoveTwoMiddle(t *testing.T) {
+	r := createSimpleResult()
+	r1 := r.Next()
+	r.Next()
+	r.Next()
+	r4 := r.Next()
+	r.RemoveNext(r1)
+	r.RemoveNext(r1)
+	assert.Equal(t, 3, r.Size())
+	assert.True(t, r1.next == r4)
+	count := 0
+	r.ResetCursor()
+	for r.HasNext() {
+		r.Next()
+		count++
+	}
+	assert.Equal(t, 3, count)
+}
+
+func TestNgramSearchResultRemoveLast(t *testing.T) {
+	r := createSimpleResult()
+	r.Next()
+	r.Next()
+	r.Next()
+	r4 := r.Next()
+	r.RemoveNext(r4)
+	assert.Equal(t, 4, r.Size())
+	assert.Nil(t, r4.next)
+	assert.True(t, r.last == r4)
+}
+
+func TestNgramSearchResultFilterRejectAll(t *testing.T) {
+	r := createSimpleResult()
+	r.Filter(func(v *NgramResultItem) bool {
+		return false
+	})
+	assert.Equal(t, 0, r.Size())
+}
+
+func TestNgramSearchResultFilterAcceptAll(t *testing.T) {
+	r := createSimpleResult()
+	r.Filter(func(v *NgramResultItem) bool {
+		return true
+	})
+	assert.Equal(t, 5, r.Size())
+}
+
+func TestNgramSearchResultFilterAcceptEven(t *testing.T) {
+	r := createSimpleResult()
+	r.Filter(func(v *NgramResultItem) bool {
+		return v.Ngram[0]%2 == 0
+	})
+	assert.Equal(t, 3, r.Size())
+	counter := 0
+	r.ResetCursor()
+	for r.HasNext() {
+		v := r.Next()
+		assert.Equal(t, counter*2, v.Ngram[0])
+		counter++
+	}
+	assert.Equal(t, 3, counter)
+}
+
+func TestNgramSearchResultFilterAcceptBlock(t *testing.T) {
+	r := createSimpleResult()
+	r.Filter(func(v *NgramResultItem) bool {
+		return v.Ngram[0] == 1 || v.Ngram[0] == 2
+	})
+	assert.Equal(t, 2, r.Size())
+	counter := 1
+	r.ResetCursor()
+	for r.HasNext() {
+		v := r.Next()
+		assert.Equal(t, counter, v.Ngram[0])
+		counter++
+	}
+	assert.Equal(t, 3, counter)
 }

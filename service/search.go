@@ -135,7 +135,10 @@ func searchByPrefix(wd *wdict.WordDictReader, sindex *index.SearchableIndex, arg
 
 func searchByRegexp(wd *wdict.WordDictReader, sindex *index.SearchableIndex, args SearchArgs) *index.NgramSearchResult {
 	parser := query.NewParser()
-	parser.Parse(args.Phrase)
+	phrase := strings.Split(args.Phrase, " ")
+	// now we try to restrict the searched set by
+	// the first token
+	parser.Parse(phrase[0])
 	prefixes := parser.GetAllPrefixes()
 
 	ans := &index.NgramSearchResult{}
@@ -150,14 +153,16 @@ func searchByRegexp(wd *wdict.WordDictReader, sindex *index.SearchableIndex, arg
 			ans.Append(sindex.GetNgramsOf(args2.Phrase))
 		}
 	}
-	rg := regexp.MustCompile(fmt.Sprintf("^%s$", args.Phrase))
-	rgList := []*regexp.Regexp{rg} // TODO currently only the fist word
+	rgList := make([]*regexp.Regexp, len(phrase))
+	for i, p := range phrase {
+		rgList[i] = regexp.MustCompile(fmt.Sprintf("^%s$", p))
+	}
 	ans.Filter(func(v *index.NgramResultItem) bool {
 		ngram := wd.DecodeNgram(v.Ngram)
-		matches := false
+		matches := true
 		for i, ptr := range rgList {
-			if ptr.MatchString(ngram[i]) {
-				matches = true
+			if !ptr.MatchString(ngram[i]) {
+				matches = false
 				break
 			}
 		}

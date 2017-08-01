@@ -104,22 +104,12 @@ func requireStringArg(args map[string][]string, key string) (string, error) {
 // ------------------------------------------------------
 
 type serviceHandler struct {
-	appVersion  string
-	conf        *gconf.SearchConf
-	runningJobs map[string]chan []*SearchResultItem
+	appVersion string
+	conf       *gconf.SearchConf
 }
 
 func (s *serviceHandler) parsePath(p string) []string {
 	return strings.Split(strings.Trim(p, "/"), "/")
-}
-
-func (s *serviceHandler) addJob(key string) (chan []*SearchResultItem, error) {
-	_, ok := s.runningJobs[key]
-	if !ok {
-		s.runningJobs[key] = make(chan []*SearchResultItem)
-		return s.runningJobs[key], nil
-	}
-	return nil, fmt.Errorf("Job %s already present", key)
 }
 
 func (s *serviceHandler) actionSearch(p []string, args map[string][]string) (interface{}, ServerError) {
