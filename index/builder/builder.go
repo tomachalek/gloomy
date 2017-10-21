@@ -17,6 +17,7 @@ package builder
 import (
 	"fmt"
 	"github.com/tomachalek/gloomy/index"
+	"github.com/tomachalek/gloomy/index/builder/tokenizer"
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/wdict"
@@ -143,8 +144,26 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int) error {
 	return nil
 }
 
+// CreateGloomyIndex is a high level function which based on
+// provided configuration creates an n-gram index.
 func CreateGloomyIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
 	builder := CreateIndexBuilder(conf, ngramSize)
-	vertigo.ParseVerticalFile(conf.GetParserConf(), builder)
-	saveEncodedNgrams(builder, conf.MinNgramFreq)
+	var procErr error
+
+	switch conf.SourceType {
+	case "vertical":
+		procErr = vertigo.ParseVerticalFile(conf.GetParserConf(), builder)
+	case "plain":
+		procErr = tokenizer.ParseFile(conf.GetParserConf(), builder)
+	default:
+		panic(fmt.Errorf("Unknow source type: %s", conf.GetParserConf()))
+
+	}
+
+	if procErr == nil {
+		saveEncodedNgrams(builder, conf.MinNgramFreq)
+
+	} else {
+		log.Panicf("Failed to process source with error: %s", procErr)
+	}
 }

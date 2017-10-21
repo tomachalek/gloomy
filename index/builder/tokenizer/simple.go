@@ -17,11 +17,11 @@ package tokenizer
 import (
 	"bufio"
 	"github.com/tomachalek/gloomy/index/builder/files"
-	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/vertigo"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 	"io"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -89,23 +89,27 @@ func importString(s string, ch *charmap.Charmap) string {
 	return strings.ToLower(ans)
 }
 
-func newSimpleTokenizer(charsetName string) *simpleTokenizer {
-	charset, err := vertigo.GetCharmapByName(charsetName)
-	if err != nil {
-		panic(err)
+func newSimpleTokenizer(charsetName string) (*simpleTokenizer, error) {
+	chm, chErr := vertigo.GetCharmapByName(charsetName)
+	if chErr != nil {
+		return nil, chErr
 	}
+	log.Printf("Configured conversion from charset %s", chm)
 	cr := regexp.MustCompile("[,\\.\\s;\\?\\!:]+")
 	return &simpleTokenizer{
 		lineRegexp: cr,
-		charset:    charset,
-	}
+		charset:    chm,
+	}, nil
 }
 
 // ParseFile parses a file described (path + encoding) in a provided configuration file
 // passing the data to LineProcessor.
-func ParseFile(conf *gconf.IndexBuilderConf, lproc vertigo.LineProcessor) error {
-	st := newSimpleTokenizer(conf.Encoding)
-	rd, err := files.NewReader(conf.VerticalFilePath)
+func ParseFile(conf *vertigo.ParserConf, lproc vertigo.LineProcessor) error {
+	st, stErr := newSimpleTokenizer(conf.Encoding)
+	if stErr != nil {
+		return stErr
+	}
+	rd, err := files.NewReader(conf.InputFilePath)
 	if err == nil {
 		return st.parseSource(rd, lproc)
 	}

@@ -16,7 +16,6 @@ package tokenizer
 
 import (
 	"github.com/stretchr/testify/assert"
-	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/vertigo"
 	"os"
 	"path/filepath"
@@ -56,11 +55,9 @@ func (tp *TestingProc) ProcStructClose(strc *vertigo.StructureClose) {
 
 func TestParseText(t *testing.T) {
 	loremPath := filepath.Join(filepath.Dir(os.Getenv("GOPATH")), "go/src/github.com/tomachalek/gloomy/testdata/loremipsum.txt")
-	conf := &gconf.IndexBuilderConf{
-		ParserConf: vertigo.ParserConf{
-			VerticalFilePath: loremPath,
-			Encoding:         "utf-8",
-		},
+	conf := &vertigo.ParserConf{
+		InputFilePath: loremPath,
+		Encoding:      "utf-8",
 	}
 	testingProc := &TestingProc{
 		tokens: make([]string, 69),
@@ -74,7 +71,7 @@ func TestParseText(t *testing.T) {
 func TestParseEmpty(t *testing.T) {
 	s := ""
 	r := strings.NewReader(s)
-	st := newSimpleTokenizer("utf-8")
+	st, _ := newSimpleTokenizer("utf-8")
 	testingProc := &TestingProc{
 		tokens: make([]string, 5),
 	}
@@ -86,7 +83,7 @@ func TestParseEmpty(t *testing.T) {
 func TestNonUTF8Encoding(t *testing.T) {
 	textPath := filepath.Join(filepath.Dir(os.Getenv("GOPATH")), "go/src/github.com/tomachalek/gloomy/testdata/cs-win1250.txt")
 	r, _ := os.Open(textPath)
-	st := newSimpleTokenizer("windows-1250")
+	st, _ := newSimpleTokenizer("windows-1250")
 	testingProc := &TestingProc{
 		tokens: make([]string, 5),
 	}
@@ -95,4 +92,10 @@ func TestNonUTF8Encoding(t *testing.T) {
 	for i, s := range tst {
 		assert.Equal(t, s, testingProc.tokens[i])
 	}
+}
+
+func TestInvalidEncoding(t *testing.T) {
+	st, err := newSimpleTokenizer("foo")
+	assert.Nil(t, st)
+	assert.Error(t, err)
 }

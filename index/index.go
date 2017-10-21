@@ -436,6 +436,8 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int, metadata []column
 	// TODO add metadata
 }
 
+// findSplitPosition returns a position within an n-gram (i.e. value from 0...n-1)
+// where the currently stored n-gram "tree" should split to create a new branch.
 func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
 	for i := 0; i < len(ngram); i++ {
 		if nib.cursors[i] == -1 || ngram[i] != nib.index.values[i].Get(nib.cursors[i]).Index {
