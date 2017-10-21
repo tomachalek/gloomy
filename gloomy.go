@@ -42,13 +42,13 @@ func help() {
 }
 
 func createIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
-	if conf.VerticalFilePath == "" {
+	if conf.InputFilePath == "" {
 		fmt.Println("Vertical file not specified")
 		os.Exit(1)
 	}
-	log.Println("Importing vertical file ", conf.VerticalFilePath)
+	log.Println("Importing vertical file ", conf.InputFilePath)
 	if conf.OutDirectory == "" {
-		conf.OutDirectory = filepath.Dir(conf.VerticalFilePath)
+		conf.OutDirectory = filepath.Dir(conf.InputFilePath)
 	}
 	fmt.Println("Output directory: ", conf.OutDirectory)
 	t0 := time.Now()
@@ -57,13 +57,13 @@ func createIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
 }
 
 func extractNgrams(conf *gconf.IndexBuilderConf, ngramSize int) {
-	if conf.VerticalFilePath == "" {
+	if conf.InputFilePath == "" {
 		fmt.Println("Vertical file not specified")
 		os.Exit(1)
 	}
-	log.Println("Processing vertical file ", conf.VerticalFilePath)
+	log.Println("Processing vertical file ", conf.InputFilePath)
 	if conf.OutDirectory == "" {
-		conf.OutDirectory = filepath.Dir(conf.VerticalFilePath)
+		conf.OutDirectory = filepath.Dir(conf.InputFilePath)
 	}
 	fmt.Println("Output directory: ", conf.OutDirectory)
 	t0 := time.Now()

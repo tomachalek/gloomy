@@ -275,3 +275,15 @@ func TestNgramSearchResultFilterAcceptBlock(t *testing.T) {
 	}
 	assert.Equal(t, 3, counter)
 }
+
+/*
+func TestLoadNgramIndex(t *testing.T) {
+	tmpdir := os.Getenv("TMP") // typically Windows
+	if tmpdir == "" {
+		tmpdir = "/tmp" //  we assume Linux/Unix
+	}
+	fmt.Println("TMPDIR", tmpdir)
+	idx := LoadNgramIndex("/foo/bar", []string{})
+	assert.NotNil(t, idx)
+}
+*/
