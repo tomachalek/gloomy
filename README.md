@@ -9,7 +9,10 @@ An n-gram database written in Go, optimized for *write once read many* use.
 
 ## Building an index
 
-Currently, *gloomy* expects a text source file to be compatible with [vertical format](https://www.sketchengine.co.uk/documentation/preparing-corpus-text/).
+*Gloomy* supports the following text formats (specified via *sourceType* conf. value):
+
+  * [vertical format](https://www.sketchengine.co.uk/documentation/preparing-corpus-text/).
+  * plain text files
 
 ```
 gloomy -ngram-size 3 create-index ./config.json
@@ -19,7 +22,8 @@ where *config.json* looks like this:
 
 ```json
 {
-    "verticalFilePath": "/path/to/a/vertical/file",
+    "inputFilePath": "/path/to/a/vertical/file",
+    "sourceType": "vertical",
     "filterArgs": [],
     "ngramIgnoreStructs": [],
     "ngramStopStrings": [".", ":"],

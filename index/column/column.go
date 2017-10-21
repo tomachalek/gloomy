@@ -66,7 +66,7 @@ func (ic *IndexColumn) Extend(appendSize int) {
 	ic.data = append(ic.data, make([]*IndexItem, appendSize)...)
 }
 
-// Resize removes spare array items
+// Shrink removes spare array items
 func (ic *IndexColumn) Shrink(rightIdx int) {
 	if rightIdx >= len(ic.data) {
 		panic("Cannot shrink to a larger column")
