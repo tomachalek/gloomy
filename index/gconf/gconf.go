@@ -73,6 +73,8 @@ type IndexBuilderConf struct {
 
 	NgramIgnoreStrings []string `json:"ngramIgnoreStrings"`
 
+	NgramMatchPrefix []string `json:"ngramMatchPrefix"`
+
 	UseStrictStructParser bool `json:"useStrictStructParser"`
 }
 
