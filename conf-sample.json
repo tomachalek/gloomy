@@ -4,6 +4,7 @@
   "ngramIgnoreStructs": [],
   "ngramStopStrings": [".", ":"],
   "ngramIgnoreStrings": ["\"", ","],
+  "matchPrefixWords": ["t", "i", "m"],
   "outDirectory": "/home/tomas/work/data/ngramy/syn_v4",
   "minNgramFreq": 4
 }

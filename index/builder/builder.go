@@ -16,13 +16,15 @@ package builder
 
 import (
 	"fmt"
+	"log"
+	"strings"
+
 	"github.com/tomachalek/gloomy/index"
 	"github.com/tomachalek/gloomy/index/builder/tokenizer"
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/index/gconf"
 	"github.com/tomachalek/gloomy/wdict"
 	"github.com/tomachalek/vertigo"
-	"log"
 )
 
 type IndexBuilder struct {
@@ -37,6 +39,8 @@ type IndexBuilder struct {
 	stopWords []string
 
 	ignoreWords []string
+
+	matchPrefixWords []string
 
 	buffer *NgramBuffer
 
@@ -71,6 +75,23 @@ func (b *IndexBuilder) isIgnoreWord(w string) bool {
 	return false
 }
 
+func (b *IndexBuilder) usesWhitelist() bool {
+	return len(b.matchPrefixWords) > 0
+}
+
+func (b *IndexBuilder) matchesPrefixWords(buff *NgramBuffer) bool {
+	buffVal := buff.GetValue()
+	for i, w := range buffVal {
+		if i >= len(b.matchPrefixWords) {
+			return true
+		}
+		if !strings.HasPrefix(w, b.matchPrefixWords[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 func (b *IndexBuilder) ProcStruct(vline *vertigo.Structure) {}
 
 func (b *IndexBuilder) ProcStructClose(vline *vertigo.StructureClose) {}
@@ -84,7 +105,7 @@ func (b *IndexBuilder) ProcToken(vline *vertigo.Token) {
 		} else if !b.isIgnoreWord(wordLC) {
 			b.buffer.AddToken(wordLC)
 			b.wordDict.AddToken(wordLC)
-			if b.buffer.IsValid() {
+			if b.buffer.IsValid() && !b.usesWhitelist() || b.matchesPrefixWords(b.buffer) {
 				meta := make([]column.AttrVal, b.nindex.MetadataWriter().NumCols())
 				b.nindex.MetadataWriter().ForEachArg(func(i int, ad *column.ArgsDictWriter, col column.AttrValColumn) {
 					if _, ok := vline.StructAttrs[ad.Name()]; ok {
@@ -115,15 +136,16 @@ func (b *IndexBuilder) CreateIndices() {
 func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuilder {
 	outputFiles := gconf.NewOutputFiles(conf, ngramSize, 0644, 0755)
 	return &IndexBuilder{
-		outputFiles:  outputFiles,
-		ngramList:    &NgramList{},
-		minNgramFreq: conf.MinNgramFreq,
-		ngramSize:    ngramSize,
-		buffer:       NewNgramBuffer(ngramSize),
-		stopWords:    conf.NgramStopStrings,
-		ignoreWords:  conf.NgramIgnoreStrings,
-		wordDict:     wdict.NewWordDictWriter(),
-		nindex:       index.NewDynamicNgramIndex(ngramSize, 10000, conf.Args), // TODO initial size
+		outputFiles:      outputFiles,
+		ngramList:        &NgramList{},
+		minNgramFreq:     conf.MinNgramFreq,
+		ngramSize:        ngramSize,
+		buffer:           NewNgramBuffer(ngramSize),
+		stopWords:        conf.NgramStopStrings,
+		ignoreWords:      conf.NgramIgnoreStrings,
+		matchPrefixWords: conf.NgramMatchPrefix,
+		wordDict:         wdict.NewWordDictWriter(),
+		nindex:           index.NewDynamicNgramIndex(ngramSize, 10000, conf.Args), // TODO initial size
 	}
 }
 
