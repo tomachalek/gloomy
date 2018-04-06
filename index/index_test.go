@@ -15,8 +15,9 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func createSimpleResult() *NgramSearchResult {
@@ -278,11 +279,8 @@ func TestNgramSearchResultFilterAcceptBlock(t *testing.T) {
 
 /*
 func TestLoadNgramIndex(t *testing.T) {
-	tmpdir := os.Getenv("TMP") // typically Windows
-	if tmpdir == "" {
-		tmpdir = "/tmp" //  we assume Linux/Unix
-	}
-	fmt.Println("TMPDIR", tmpdir)
+	tmpDir := util.GetSysTmpDir()
+	fmt.Println("TMPDIR", tmpDir)
 	idx := LoadNgramIndex("/foo/bar", []string{})
 	assert.NotNil(t, idx)
 }

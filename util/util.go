@@ -16,6 +16,7 @@ package util
 
 import "os"
 
+// FirstError returns a first non-nil error in a provided array.
 func FirstError(args ...error) error {
 	for _, err := range args {
 		if err != nil {
@@ -25,6 +26,9 @@ func FirstError(args ...error) error {
 	return nil
 }
 
+// IsDir tests whether a provided path represents
+// a directory. If not or in case of an IO error,
+// false is returned.
 func IsDir(path string) bool {
 	f, err := os.Open(path)
 	if err != nil {
@@ -35,4 +39,15 @@ func IsDir(path string) bool {
 		return false
 	}
 	return finfo.Mode().IsDir()
+}
+
+// GetSysTmpDir returns an OS-recognized temporary dir path.
+// It tries to read TMP envorinment variable and in case
+// of failure "/tmp" is used.
+func GetSysTmpDir() string {
+	tmpdir := os.Getenv("TMP") // typically Windows
+	if tmpdir == "" {
+		tmpdir = "/tmp" //  we assume Linux/Unix
+	}
+	return tmpdir
 }
