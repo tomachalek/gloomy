@@ -4,17 +4,19 @@
 
 An n-gram database written in Go, optimized for *write once read many* use.
 
-... a work in progress project
-
+* [Building an index](#building-an-index)
+* [Searching](#searching)
+* [Config reference](#config-reference)
+* [Additional functions](#additional-functions)
 
 ## Building an index
 
 *Gloomy* supports the following text formats (specified via *sourceType* conf. value):
 
-  * [vertical format](https://www.sketchengine.co.uk/documentation/preparing-corpus-text/).
-  * plain text files
+* [vertical format](https://www.sketchengine.co.uk/documentation/preparing-corpus-text/).
+* plain text files
 
-```
+```shell
 gloomy -ngram-size 3 create-index ./config.json
 ```
 
@@ -28,6 +30,8 @@ where *config.json* looks like this:
     "ngramIgnoreStructs": [],
     "ngramStopStrings": [".", ":"],
     "ngramIgnoreStrings": ["\"", ","],
+    "tmpDir": "/tmp/gloomy",
+    "procChunkSize": 1000000,
     "outDirectory": "/path/to/an/output/directory",
     "args": {
       "doc.file": "col8",
@@ -65,10 +69,9 @@ gloomy search-service
 
 Test a client:
 
-```
+```shell
 curl -XGET http://localhost:8090/search?corpus=susanne&q=from
 ```
-
 
 ### Query syntax
 
@@ -125,11 +128,32 @@ http://localhost:8090/search?corpus=susanne&q=from&attrs=doc.file&attrs=doc.n
 http://localhost:8090/search?corpus=susanne&qtype=regexp&q=dogs%3F&attrs=doc.file&attrs=doc.n
 ```
 
+## Config reference
+
+**inputFilePath** - path to a source file in a plain text or zipped plain text format
+
+**sourceType** - plain/vertical
+
+**filterArgs** - a CNF encoded set of rules applied to structural attributes a a filter
+
+**ngramIgnoreStructs** - a list of structs to ignore
+
+**ngramStopStrings** - a list of strings to end an n-gram (typically: ".", "!" etc.)
+
+**ngramIgnoreStrings** - a list of strings to be completely ignored
+
+**tmpDir** - a directory where Gloomy may store temporary data when dealing with large data; the directory may not exist - Gloomy will create it if needed
+
+**procChunkSize** - number of ngrams per temporary chunk file when dealing with large data
+
+**outDirectory** - output directory
+
+**args** - structural attributes to be imported
 
 ## Additional functions
 
 ### Extracting sorted unique n-grams with frequencies
 
-```
+```shell
 gloomy -ngram-size 3 extract-ngrams ./config.json
 ```
