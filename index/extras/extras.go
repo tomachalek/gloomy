@@ -17,20 +17,21 @@ package extras
 import (
 	"bufio"
 	"fmt"
-	"github.com/tomachalek/gloomy/index/builder"
-	"github.com/tomachalek/gloomy/index/gconf"
-	"github.com/tomachalek/vertigo"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/tomachalek/gloomy/index/builder"
+	"github.com/tomachalek/gloomy/index/gconf"
+	"github.com/tomachalek/vertigo"
 )
 
-func saveNgrams(ngramList *builder.NgramList, minFreq int, saveFile *os.File) error {
+func saveNgrams(ngramList builder.NgramList, minFreq int, saveFile *os.File) error {
 	fw := bufio.NewWriter(saveFile)
 	defer fw.Flush()
-	ngramList.DFSWalkthru(func(item *builder.NgramNode) {
-		if item.GetCount() >= minFreq {
-			fw.WriteString(fmt.Sprintf("%s\t%d\n", strings.Join(item.GetNgram(), "\t"), item.GetCount()))
+	ngramList.ForEach(func(item *builder.NgramRecord) {
+		if item.Count >= minFreq {
+			fw.WriteString(fmt.Sprintf("%s\t%d\n", strings.Join(item.Ngram, "\t"), item.Count))
 		}
 	})
 	return nil

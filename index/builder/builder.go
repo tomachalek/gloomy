@@ -27,6 +27,25 @@ import (
 	"github.com/tomachalek/vertigo"
 )
 
+type NgramRecord struct {
+	Ngram []string
+	Count int
+	Args  []column.AttrVal
+}
+
+// NgramList specifies a required ngram list implementation
+// Gloomy provides a simple in-memory implementation and
+// a more advanced one operating on multiple file chunks
+// for large data
+type NgramList interface {
+	ForEach(fn func(n *NgramRecord))
+
+	Size() int
+
+	Add(ngram []string, metadata []column.AttrVal)
+}
+
+// IndexBuilder is an object for creating n-gram indices
 type IndexBuilder struct {
 	outputFiles *gconf.OutputFiles
 
@@ -34,7 +53,7 @@ type IndexBuilder struct {
 
 	minNgramFreq int
 
-	ngramList *NgramList
+	ngramList NgramList
 
 	stopWords []string
 
@@ -53,7 +72,7 @@ func (b *IndexBuilder) GetOutputFiles() *gconf.OutputFiles {
 	return b.outputFiles
 }
 
-func (b *IndexBuilder) GetNgramList() *NgramList {
+func (b *IndexBuilder) GetNgramList() NgramList {
 	return b.ngramList
 }
 
@@ -124,8 +143,8 @@ func (b *IndexBuilder) ProcToken(vline *vertigo.Token) {
 
 func (b *IndexBuilder) CreateIndices() {
 	counters := make([][]int, b.ngramSize-1)
-	b.ngramList.DFSWalkthru(func(item *NgramNode) {
-		if item.count >= b.minNgramFreq {
+	b.ngramList.ForEach(func(item *NgramRecord) {
+		if item.Count >= b.minNgramFreq {
 			for i := range counters {
 				fmt.Println(i) // TODO
 			}
@@ -135,9 +154,21 @@ func (b *IndexBuilder) CreateIndices() {
 
 func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuilder {
 	outputFiles := gconf.NewOutputFiles(conf, ngramSize, 0644, 0755)
+
+	var ngramList NgramList
+	if conf.ProcChunkSize == 0 {
+		ngramList = &RAMNgramList{}
+
+	} else {
+		if conf.TmpDir == "" {
+			log.Panic("A 'tmpDir' must be configured in case procChunkSize > 0")
+		}
+		ngramList = NewLargeNgramList(conf.TmpDir, conf.ProcChunkSize)
+	}
+
 	return &IndexBuilder{
 		outputFiles:      outputFiles,
-		ngramList:        &NgramList{},
+		ngramList:        ngramList,
 		minNgramFreq:     conf.MinNgramFreq,
 		ngramSize:        ngramSize,
 		buffer:           NewNgramBuffer(ngramSize),
@@ -151,13 +182,13 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 
 func saveEncodedNgrams(builder *IndexBuilder, minFreq int) error {
 	builder.wordDict.Finalize(builder.GetOutputFiles().GetIndexDir())
-	builder.ngramList.DFSWalkthru(func(item *NgramNode) {
-		if item.count >= minFreq {
-			encodedNg := make([]int, len(item.ngram))
-			for i, w := range item.ngram {
+	builder.ngramList.ForEach(func(item *NgramRecord) {
+		if item.Count >= minFreq {
+			encodedNg := make([]int, len(item.Ngram))
+			for i, w := range item.Ngram {
 				encodedNg[i] = builder.wordDict.GetTokenIndex(w)
 			}
-			builder.nindex.AddNgram(encodedNg, item.count, item.args)
+			builder.nindex.AddNgram(encodedNg, item.Count, item.Args)
 		}
 	})
 	builder.nindex.Finish()

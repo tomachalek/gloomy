@@ -76,6 +76,10 @@ type IndexBuilderConf struct {
 	NgramMatchPrefix []string `json:"ngramMatchPrefix"`
 
 	UseStrictStructParser bool `json:"useStrictStructParser"`
+
+	TmpDir string `json:"tmpDir"`
+
+	ProcChunkSize int `json:"procChunkSize"`
 }
 
 func (i *IndexBuilderConf) GetParserConf() *vertigo.ParserConf {
@@ -115,7 +119,7 @@ type OutputFiles struct {
 
 func (o *OutputFiles) GetSortedIndexTmpPath(mode int) (*os.File, error) {
 	inFilenamePrefix := stripSuffix(filepath.Base(o.conf.InputFilePath))
-	fileName := fmt.Sprintf("%s_%d-grams.tmp", inFilenamePrefix, o.ngramSize)
+	fileName := fmt.Sprintf("%s_%d-grams.txt", inFilenamePrefix, o.ngramSize)
 	outPath := filepath.Join(o.indexDir, fileName)
 	return os.OpenFile(outPath, mode, o.filePerm)
 }

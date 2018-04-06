@@ -15,12 +15,14 @@
 package builder
 
 import (
+	"fmt"
+
 	"github.com/tomachalek/gloomy/index/column"
 )
 
 func ngramsCmp(n1 []string, n2 []string) int {
 	if len(n1) != len(n2) {
-		panic("Cannot compare ngrams of different sizes")
+		panic(fmt.Sprintf("Cannot compare ngrams of different sizes (%d vs. %d)", len(n1), len(n2)))
 	}
 	for i := 0; i < len(n1); i++ {
 		if n1[i] > n2[i] {
@@ -49,32 +51,32 @@ func (n *NgramNode) GetNgram() []string {
 	return n.ngram
 }
 
-type NgramList struct {
+type RAMNgramList struct {
 	root     *NgramNode
 	numNodes int
 }
 
-func dfsWalkthruRecursive(node *NgramNode, fn func(n *NgramNode)) {
+func dfsWalkthruRecursive(node *NgramNode, fn func(n *NgramRecord)) {
 	if node.left != nil {
 		dfsWalkthruRecursive(node.left, fn)
 	}
-	fn(node)
+	fn(&NgramRecord{Ngram: node.ngram, Count: node.count, Args: node.args})
 	if node.right != nil {
 		dfsWalkthruRecursive(node.right, fn)
 	}
 }
 
-func (n *NgramList) DFSWalkthru(fn func(n *NgramNode)) {
+func (n *RAMNgramList) ForEach(fn func(n *NgramRecord)) {
 	if n.root != nil {
 		dfsWalkthruRecursive(n.root, fn)
 	}
 }
 
-func (n *NgramList) Size() int {
+func (n *RAMNgramList) Size() int {
 	return n.numNodes
 }
 
-func (n *NgramList) Add(ngram []string, metadata []column.AttrVal) {
+func (n *RAMNgramList) Add(ngram []string, metadata []column.AttrVal) {
 	if n.root == nil {
 		n.root = &NgramNode{ngram: ngram, count: 1, args: metadata}
 		n.numNodes = 1
