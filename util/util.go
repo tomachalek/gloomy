@@ -14,6 +14,8 @@
 
 package util
 
+import "os"
+
 func FirstError(args ...error) error {
 	for _, err := range args {
 		if err != nil {
@@ -21,4 +23,16 @@ func FirstError(args ...error) error {
 		}
 	}
 	return nil
+}
+
+func IsDir(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	finfo, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return finfo.Mode().IsDir()
 }

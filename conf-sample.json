@@ -6,5 +6,7 @@
   "ngramIgnoreStrings": ["\"", ","],
   "matchPrefixWords": ["t", "i", "m"],
   "outDirectory": "/home/tomas/work/data/ngramy/syn_v4",
-  "minNgramFreq": 4
+  "minNgramFreq": 4,
+  "tmpDir": "/tmp/gloomy",
+  "procChunkSize": 1000000
 }
