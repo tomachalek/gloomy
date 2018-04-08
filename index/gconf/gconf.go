@@ -77,6 +77,8 @@ type IndexBuilderConf struct {
 
 	UseStrictStructParser bool `json:"useStrictStructParser"`
 
+	LogProgressEachNth int `json:"logProgressEachNth"`
+
 	TmpDir string `json:"tmpDir"`
 
 	ProcChunkSize int `json:"procChunkSize"`
@@ -91,6 +93,7 @@ func (i *IndexBuilderConf) GetParserConf() *vertigo.ParserConf {
 		InputFilePath:         i.InputFilePath,
 		FilterArgs:            i.FilterArgs,
 		StructAttrAccumulator: accumType,
+		LogProgressEachNth:    i.LogProgressEachNth,
 	}
 }
 

@@ -209,7 +209,12 @@ func CreateGloomyIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
 	case "plain":
 		procErr = tokenizer.ParseFile(conf.GetParserConf(), builder)
 	default:
-		panic(fmt.Errorf("Unknow source type: %s", conf.GetParserConf()))
+		if conf.SourceType != "" {
+			panic(fmt.Errorf("Unknown data source type: %s", conf.SourceType))
+
+		} else {
+			panic("Data source type not specified. Use 'sourceType' in your config file.")
+		}
 
 	}
 
