@@ -120,6 +120,7 @@ func (nn *LargeNgramList) generateNewChunkFileName() string {
 
 func (nn *LargeNgramList) saveChunk() error {
 	chunkPath := nn.generateNewChunkFileName()
+	log.Printf("Saving chunk %s", chunkPath)
 	f, err := os.OpenFile(chunkPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0664)
 	defer f.Close()
 	if err != nil {

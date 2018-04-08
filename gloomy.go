@@ -37,8 +37,11 @@ const (
 	appVersion          = "0.1.0"
 )
 
-func help() {
-	fmt.Println("HELP:")
+func help(topic string) {
+	if topic == "" {
+		fmt.Print("Missing action to help with. Select one of the:\n\tcreate-index, extract-ngrams, search-service, search")
+	}
+	fmt.Printf("HELP on [%s]:\n", topic)
 }
 
 func createIndex(conf *gconf.IndexBuilderConf, ngramSize int) {
@@ -126,7 +129,7 @@ func main() {
 	resultOffset := flag.Int("offset", 0, "Result offset (starting from zero)")
 	queryType := flag.String("qtype", "default", "Query type (0 = default, 1 = regexp)")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage:\n\t%s [options] [action] [config.json]\n\nAavailable actions:\n\tsearch, search-service, create-index, extract-ngrams\n\nOptions:\n", filepath.Base(os.Args[0]))
+		fmt.Fprintf(os.Stderr, "Gloomy - an n-gram database >>>\n\nUsage:\n\t%s [options] [action] [config.json]\n\nAavailable actions:\n\tsearch, search-service, create-index, extract-ngrams\n\nOptions:\n", filepath.Base(os.Args[0]))
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -138,7 +141,7 @@ func main() {
 	} else {
 		switch flag.Arg(0) {
 		case "help":
-			help()
+			help(flag.Arg(1))
 		case createIndexAction:
 			conf := gconf.LoadIndexBuilderConf(flag.Arg(1))
 			createIndex(conf, *ngramSize)
@@ -158,7 +161,8 @@ func main() {
 			searchCLI(*srchConfPath, flag.Arg(1), flag.Arg(2), parseAttrs(*metadataAttrs),
 				*resultOffset, *resultLimit, qtype)
 		default:
-			panic("Unknown action")
+			fmt.Printf("Unknown action %s\n", flag.Arg(0))
+			os.Exit(1)
 		}
 	}
 }
