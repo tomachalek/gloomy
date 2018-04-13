@@ -56,6 +56,11 @@ func LoadSearchConf(confPath string) *SearchConf {
 
 // ---------------------------------------------------------
 
+type NgramFilterConf struct {
+	Lib string `json:"lib"`
+	Fn  string `json:"fn"`
+}
+
 type IndexBuilderConf struct {
 	vertigo.ParserConf
 
@@ -73,7 +78,9 @@ type IndexBuilderConf struct {
 
 	NgramIgnoreStrings []string `json:"ngramIgnoreStrings"`
 
-	NgramMatchPrefix []string `json:"ngramMatchPrefix"`
+	TagAttrIdx int `json:"tagAttrIdx"`
+
+	NgramFilter NgramFilterConf `json:"ngramFilter"`
 
 	UseStrictStructParser bool `json:"useStrictStructParser"`
 
