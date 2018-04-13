@@ -17,9 +17,10 @@ package builder
 import (
 	"fmt"
 	"log"
-	"strings"
+	"plugin"
 
 	"github.com/tomachalek/gloomy/index"
+	"github.com/tomachalek/gloomy/index/builder/filter"
 	"github.com/tomachalek/gloomy/index/builder/tokenizer"
 	"github.com/tomachalek/gloomy/index/column"
 	"github.com/tomachalek/gloomy/index/gconf"
@@ -45,6 +46,14 @@ type NgramList interface {
 	Add(ngram []string, metadata []column.AttrVal)
 }
 
+type NgramBuffer interface {
+	AddToken(token string)
+	GetValue() []string
+	IsValid() bool
+	Reset()
+	Stringer() string
+}
+
 // IndexBuilder is an object for creating n-gram indices
 type IndexBuilder struct {
 	outputFiles *gconf.OutputFiles
@@ -59,11 +68,15 @@ type IndexBuilder struct {
 
 	ignoreWords []string
 
-	matchPrefixWords []string
+	customFilter filter.CustomFilter
 
-	buffer *NgramBuffer
+	buffer NgramBuffer
 
 	wordDict *wdict.WordDictWriter
+
+	tagAttrIdx int
+
+	tagBuffer NgramBuffer // this is optional
 
 	nindex *index.DynamicNgramIndex
 }
@@ -94,21 +107,8 @@ func (b *IndexBuilder) isIgnoreWord(w string) bool {
 	return false
 }
 
-func (b *IndexBuilder) usesWhitelist() bool {
-	return len(b.matchPrefixWords) > 0
-}
-
-func (b *IndexBuilder) matchesPrefixWords(buff *NgramBuffer) bool {
-	buffVal := buff.GetValue()
-	for i, w := range buffVal {
-		if i >= len(b.matchPrefixWords) {
-			return true
-		}
-		if !strings.HasPrefix(w, b.matchPrefixWords[i]) {
-			return false
-		}
-	}
-	return true
+func (b *IndexBuilder) matchesFilter(buff NgramBuffer, tags NgramBuffer) bool {
+	return b.customFilter(buff.GetValue(), tags.GetValue())
 }
 
 func (b *IndexBuilder) ProcStruct(vline *vertigo.Structure) {}
@@ -120,11 +120,14 @@ func (b *IndexBuilder) ProcToken(vline *vertigo.Token) {
 		wordLC := vline.WordLC()
 		if b.isStopWord(wordLC) {
 			b.buffer.Reset()
+			b.tagBuffer.Reset()
 
 		} else if !b.isIgnoreWord(wordLC) {
 			b.buffer.AddToken(wordLC)
 			b.wordDict.AddToken(wordLC)
-			if b.buffer.IsValid() && !b.usesWhitelist() || b.matchesPrefixWords(b.buffer) {
+			b.tagBuffer.AddToken(vline.Attrs[b.tagAttrIdx])
+
+			if b.buffer.IsValid() && b.matchesFilter(b.buffer, b.tagBuffer) {
 				meta := make([]column.AttrVal, b.nindex.MetadataWriter().NumCols())
 				b.nindex.MetadataWriter().ForEachArg(func(i int, ad *column.ArgsDictWriter, col column.AttrValColumn) {
 					if _, ok := vline.StructAttrs[ad.Name()]; ok {
@@ -152,6 +155,24 @@ func (b *IndexBuilder) CreateIndices() {
 	})
 }
 
+func loadCustomFilter(libPath string, fn string) filter.CustomFilter {
+	if libPath != "" && fn != "" {
+		p, err := plugin.Open(libPath)
+		if err != nil {
+			panic(err)
+		}
+		f, err := p.Lookup(fn)
+		if err != nil {
+			panic(err)
+		}
+		return *f.(*filter.CustomFilter)
+	}
+	log.Print("No custom filter plug-in defined")
+	return func(words []string, tags []string) bool {
+		return true
+	}
+}
+
 func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuilder {
 	outputFiles := gconf.NewOutputFiles(conf, ngramSize, 0644, 0755)
 
@@ -166,17 +187,27 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 		ngramList = NewLargeNgramList(conf.TmpDir, conf.ProcChunkSize)
 	}
 
+	var tagBuffer NgramBuffer
+	if conf.NgramFilter.Lib != "" {
+		tagBuffer = NewStdNgramBuffer(ngramSize)
+
+	} else {
+		tagBuffer = &DummyNgramBuffer{}
+	}
+
 	return &IndexBuilder{
-		outputFiles:      outputFiles,
-		ngramList:        ngramList,
-		minNgramFreq:     conf.MinNgramFreq,
-		ngramSize:        ngramSize,
-		buffer:           NewNgramBuffer(ngramSize),
-		stopWords:        conf.NgramStopStrings,
-		ignoreWords:      conf.NgramIgnoreStrings,
-		matchPrefixWords: conf.NgramMatchPrefix,
-		wordDict:         wdict.NewWordDictWriter(),
-		nindex:           index.NewDynamicNgramIndex(ngramSize, 10000, conf.Args), // TODO initial size
+		outputFiles:  outputFiles,
+		ngramList:    ngramList,
+		minNgramFreq: conf.MinNgramFreq,
+		ngramSize:    ngramSize,
+		buffer:       NewStdNgramBuffer(ngramSize),
+		tagAttrIdx:   conf.TagAttrIdx,
+		tagBuffer:    tagBuffer,
+		stopWords:    conf.NgramStopStrings,
+		ignoreWords:  conf.NgramIgnoreStrings,
+		customFilter: loadCustomFilter(conf.NgramFilter.Lib, conf.NgramFilter.Fn),
+		wordDict:     wdict.NewWordDictWriter(),
+		nindex:       index.NewDynamicNgramIndex(ngramSize, 10000, conf.Args), // TODO initial size
 	}
 }
 

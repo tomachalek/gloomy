@@ -16,9 +16,9 @@ package builder
 
 import "strings"
 
-// NgramBuffer is used for continuous "circular" inserting
+// StdNgramBuffer is used for continuous "circular" inserting
 // of tokens and their export as n-grams
-type NgramBuffer struct {
+type StdNgramBuffer struct {
 	begin int
 	write int
 	Size  int
@@ -26,14 +26,14 @@ type NgramBuffer struct {
 }
 
 // AddToken add a token to the buffer
-func (n *NgramBuffer) AddToken(token string) {
+func (n *StdNgramBuffer) AddToken(token string) {
 	n.write = (n.write + 1) % n.Size
 	n.data[n.write] = token
 	n.begin = (n.begin + 1) % n.Size
 }
 
 // GetValue return current
-func (n *NgramBuffer) GetValue() []string {
+func (n *StdNgramBuffer) GetValue() []string {
 	ans := make([]string, n.Size)
 	for i := range n.data {
 		ans[i] = n.data[(n.begin+i)%n.Size]
@@ -45,7 +45,7 @@ func (n *NgramBuffer) GetValue() []string {
 // positions are non-empty. This can be used
 // to filter out incomplete n-grams from the
 // beginning of a sentence
-func (n *NgramBuffer) IsValid() bool {
+func (n *StdNgramBuffer) IsValid() bool {
 	for _, v := range n.data {
 		if v == "" {
 			return false
@@ -57,7 +57,7 @@ func (n *NgramBuffer) IsValid() bool {
 // Reset clears out all the values
 // and also internal pointers to start
 // generating n-grams from scratch.
-func (n *NgramBuffer) Reset() {
+func (n *StdNgramBuffer) Reset() {
 	n.begin = 0
 	n.write = -1
 	for i := range n.data {
@@ -65,23 +65,44 @@ func (n *NgramBuffer) Reset() {
 	}
 }
 
-// Stringer produses a user-friendly overview
+// Stringer produces a user-friendly overview
 // of buffer where tokens are separated by
 // spaces. Please note that this works also
 // on non-valid tokens. I.e. to be sure,
 // IsValid must be called.
-func (n *NgramBuffer) Stringer() string {
+func (n *StdNgramBuffer) Stringer() string {
 	return strings.Join(n.GetValue(), " ")
 }
 
-// NewNgramBuffer is a factory function
+// NewStdNgramBuffer is a factory function
 // which creates a properly initialized
 // buffer.
-func NewNgramBuffer(size int) *NgramBuffer {
-	return &NgramBuffer{
+func NewStdNgramBuffer(size int) *StdNgramBuffer {
+	return &StdNgramBuffer{
 		Size:  size,
 		begin: 0,
 		write: -1,
 		data:  make([]string, size),
 	}
+}
+
+type DummyNgramBuffer struct {
+}
+
+func (n *DummyNgramBuffer) AddToken(token string) {
+}
+
+func (n *DummyNgramBuffer) GetValue() []string {
+	return []string{}
+}
+
+func (n *DummyNgramBuffer) IsValid() bool {
+	return false
+}
+
+func (n *DummyNgramBuffer) Reset() {
+}
+
+func (n *DummyNgramBuffer) Stringer() string {
+	return ""
 }
