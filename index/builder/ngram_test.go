@@ -19,7 +19,7 @@ import (
 )
 
 func TestInitialization(t *testing.T) {
-	ng := NewNgramBuffer(3)
+	ng := NewStdNgramBuffer(3)
 	if ng.begin != 0 {
 		t.Errorf("ng.begin != 0, value = %d", ng.begin)
 	}
@@ -35,7 +35,7 @@ func TestInitialization(t *testing.T) {
 }
 
 func TestInsertFirst(t *testing.T) {
-	ng := NewNgramBuffer(3)
+	ng := NewStdNgramBuffer(3)
 	ng.AddToken("foo")
 	if ng.begin != 1 {
 		t.Error("ng.begin != 1")
@@ -46,7 +46,7 @@ func TestInsertFirst(t *testing.T) {
 }
 
 func TestInsertedValues(t *testing.T) {
-	ng := NewNgramBuffer(3)
+	ng := NewStdNgramBuffer(3)
 	ng.AddToken("foo")
 	ng.AddToken("bar")
 	ng.AddToken("baz")
@@ -57,7 +57,7 @@ func TestInsertedValues(t *testing.T) {
 }
 
 func TestInsertedValues2(t *testing.T) {
-	ng := NewNgramBuffer(3)
+	ng := NewStdNgramBuffer(3)
 	ng.AddToken("foo")
 	ng.AddToken("bar")
 	ng.AddToken("baz")
@@ -69,7 +69,7 @@ func TestInsertedValues2(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
-	ng := NewNgramBuffer(3)
+	ng := NewStdNgramBuffer(3)
 	ng.AddToken("foo")
 	ng.AddToken("bar")
 	ng.AddToken("baz")
