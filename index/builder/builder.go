@@ -17,7 +17,6 @@ package builder
 import (
 	"fmt"
 	"log"
-	"plugin"
 
 	"github.com/tomachalek/gloomy/index"
 	"github.com/tomachalek/gloomy/index/builder/filter"
@@ -155,24 +154,6 @@ func (b *IndexBuilder) CreateIndices() {
 	})
 }
 
-func loadCustomFilter(libPath string, fn string) filter.CustomFilter {
-	if libPath != "" && fn != "" {
-		p, err := plugin.Open(libPath)
-		if err != nil {
-			panic(err)
-		}
-		f, err := p.Lookup(fn)
-		if err != nil {
-			panic(err)
-		}
-		return *f.(*filter.CustomFilter)
-	}
-	log.Print("No custom filter plug-in defined")
-	return func(words []string, tags []string) bool {
-		return true
-	}
-}
-
 func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuilder {
 	outputFiles := gconf.NewOutputFiles(conf, ngramSize, 0644, 0755)
 
@@ -205,7 +186,7 @@ func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuild
 		tagBuffer:    tagBuffer,
 		stopWords:    conf.NgramStopStrings,
 		ignoreWords:  conf.NgramIgnoreStrings,
-		customFilter: loadCustomFilter(conf.NgramFilter.Lib, conf.NgramFilter.Fn),
+		customFilter: filter.LoadCustomFilter(conf.NgramFilter.Lib, conf.NgramFilter.Fn),
 		wordDict:     wdict.NewWordDictWriter(),
 		nindex:       index.NewDynamicNgramIndex(ngramSize, 10000, conf.Args), // TODO initial size
 	}

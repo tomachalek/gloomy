@@ -14,4 +14,27 @@
 
 package filter
 
+import (
+	"log"
+	"plugin"
+)
+
 type CustomFilter func(words []string, tags []string) bool
+
+func LoadCustomFilter(libPath string, fn string) CustomFilter {
+	if libPath != "" && fn != "" {
+		p, err := plugin.Open(libPath)
+		if err != nil {
+			panic(err)
+		}
+		f, err := p.Lookup(fn)
+		if err != nil {
+			panic(err)
+		}
+		return *f.(*CustomFilter)
+	}
+	log.Print("No custom filter plug-in defined")
+	return func(words []string, tags []string) bool {
+		return true
+	}
+}
