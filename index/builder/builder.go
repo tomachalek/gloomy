@@ -128,12 +128,13 @@ func (b *IndexBuilder) ProcToken(vline *vertigo.Token) {
 
 			if b.buffer.IsValid() && b.matchesFilter(b.buffer, b.tagBuffer) {
 				meta := make([]column.AttrVal, b.nindex.MetadataWriter().NumCols())
-				b.nindex.MetadataWriter().ForEachArg(func(i int, ad *column.ArgsDictWriter, col column.AttrValColumn) {
-					if _, ok := vline.StructAttrs[ad.Name()]; ok {
-						idx := ad.AddValue(vline.StructAttrs[ad.Name()])
-						meta[i] = column.AttrVal(idx)
-					}
-				})
+				b.nindex.MetadataWriter().ForEachArg(
+					func(i int, ad *column.ArgsDictWriter, col column.AttrValColumn) {
+						if _, ok := vline.StructAttrs[ad.Name()]; ok {
+							idx := ad.AddValue(vline.StructAttrs[ad.Name()])
+							meta[i] = column.AttrVal(idx)
+						}
+					})
 				b.ngramList.Add(b.buffer.GetValue(), meta)
 			}
 		}
