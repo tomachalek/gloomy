@@ -187,7 +187,7 @@ Then upgrade your config json:
 ```json
 {
     "inputFilePath": "/path/to/a/vertical/file",
-    /* ... */
+    "...": "...",
     "ngramFilter": {
       "lib": "/path/to/your/filter.so",
       "fn": "FilterF1"
