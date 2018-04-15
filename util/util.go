@@ -41,6 +41,32 @@ func IsDir(path string) bool {
 	return finfo.Mode().IsDir()
 }
 
+// IsFile tests whether a provided path represents
+// a file. If not or in case of an IO error,
+// false is returned.
+func IsFile(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	finfo, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return finfo.Mode().IsRegular()
+}
+
+// GetWorkingDir returns a program working
+// directory. In case of an error, an empty
+// string is returned.
+func GetWorkingDir() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return dir
+}
+
 // GetSysTmpDir returns an OS-recognized temporary dir path.
 // It tries to read TMP envorinment variable and in case
 // of failure "/tmp" is used.

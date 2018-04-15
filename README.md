@@ -7,6 +7,7 @@ An n-gram database written in Go, optimized for *write once read many* use.
 * [Building an index](#building-an-index)
 * [Searching](#searching)
 * [Config reference](#config-reference)
+* [Advanced source data filtering](#advanced-source-data-filtering)
 * [Additional functions](#additional-functions)
 
 ## Building an index
@@ -150,9 +151,57 @@ http://localhost:8090/search?corpus=susanne&qtype=regexp&q=dogs%3F&attrs=doc.fil
 
 **args** - structural attributes to be imported
 
+## Advanced source data filtering
+
+To filter specific ngrams out Gloomy offers a way
+how to call a custom external function testing current
+n-gram (and its possible PoS tag companion).
+
+```go
+package main
+
+import (
+	"regexp"
+	"github.com/tomachalek/gloomy/index/builder/filter"
+)
+
+var (
+    tagPattern = regexp.MustCompile("^.{14}8.")
+)
+
+func filterF1(words []string, tags []string) bool {
+	return !tagPattern.MatchString(tags[i])
+}
+
+var FilterF1 = filter.CustomFilter(filterF1)
+```
+
+Compile the function(s) with
+
+```shell
+go build -buildmode=plugin
+```
+
+Then upgrade your config json:
+
+```json
+{
+    "inputFilePath": "/path/to/a/vertical/file",
+    "...": "...",
+    "ngramFilter": {
+      "lib": "/path/to/your/filter.so",
+      "fn": "FilterF1"
+    },
+}
+```
+
+
 ## Additional functions
 
 ### Extracting sorted unique n-grams with frequencies
+
+It is possible to just extract n-grams to a raw text file
+instead of building an index:
 
 ```shell
 gloomy -ngram-size 3 extract-ngrams ./config.json

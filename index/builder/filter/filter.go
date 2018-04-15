@@ -14,4 +14,63 @@
 
 package filter
 
+import (
+	"fmt"
+	"log"
+	"path/filepath"
+	"plugin"
+	"strings"
+
+	"github.com/tomachalek/gloomy/util"
+)
+
+const (
+	defaultSystemPluginDir = "/usr/local/lib/gloomy"
+)
+
+// CustomFilter compiled as a plug-in can be used to
+// filter out specific n-grams from a created index
+// (out output file).
 type CustomFilter func(words []string, tags []string) bool
+
+func findPluginLib(pathSuff string) (string, error) {
+	paths := []string{
+		pathSuff,
+		filepath.Join(util.GetWorkingDir(), pathSuff),
+		filepath.Join(defaultSystemPluginDir, pathSuff),
+	}
+	for _, fullPath := range paths {
+		if util.IsFile(fullPath) {
+			return fullPath, nil
+		}
+	}
+	return "", fmt.Errorf("Failed to find plug-in file in %s", strings.Join(paths, ", "))
+}
+
+// LoadCustomFilter loads a compiled .so plugin from a defined
+// path and selects a function identified by fn.
+// In case libPath does not point to an existing file, the function
+// handles it as a path suffix and tries other locations (working
+// directory, /usr/local/lib/gloomy).
+func LoadCustomFilter(libPath string, fn string) CustomFilter {
+	if libPath != "" && fn != "" {
+		fullPath, err := findPluginLib(libPath)
+		if err != nil {
+			panic(err)
+		}
+		p, err := plugin.Open(fullPath)
+		if err != nil {
+			panic(err)
+		}
+		f, err := p.Lookup(fn)
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("Using filter plug-in %s from %s", fn, fullPath)
+		return *f.(*CustomFilter)
+	}
+	log.Print("No custom filter plug-in defined")
+	return func(words []string, tags []string) bool {
+		return true
+	}
+}

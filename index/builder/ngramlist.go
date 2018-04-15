@@ -104,6 +104,8 @@ func (n *RAMNgramList) Add(ngram []string, metadata []column.AttrVal) {
 					item = nil // stop the iteration
 				}
 			case 0:
+				// TODO here we have actually quite a problem as the
+				// 'metadata' of the incoming item is ignored
 				item.count++
 				item = nil // stop the iteration
 			}
