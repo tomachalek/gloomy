@@ -46,6 +46,10 @@ var _ = log.Print
 // of an attribute value
 type AttrVal int
 
+// Metadata is a single metadata record composed
+// of multiple defined attributes (e.g. 'genre', 'year', 'publisher')
+type Metadata []AttrVal
+
 // AttrValColumn is an interface representing
 // general metadata column no matter what
 // representation (8bit, 32bit, whatever)

@@ -30,7 +30,7 @@ import (
 type NgramRecord struct {
 	Ngram []string
 	Count int
-	Args  []column.AttrVal
+	Args  column.Metadata
 }
 
 // NgramList specifies a required ngram list implementation
@@ -42,7 +42,7 @@ type NgramList interface {
 
 	Size() int
 
-	Add(ngram []string, metadata []column.AttrVal)
+	Add(ngram []string, metadata column.Metadata)
 }
 
 type NgramBuffer interface {
@@ -127,7 +127,7 @@ func (b *IndexBuilder) ProcToken(vline *vertigo.Token) {
 			b.tagBuffer.AddToken(vline.Attrs[b.tagAttrIdx])
 
 			if b.buffer.IsValid() && b.matchesFilter(b.buffer, b.tagBuffer) {
-				meta := make([]column.AttrVal, b.nindex.MetadataWriter().NumCols())
+				meta := make(column.Metadata, b.nindex.MetadataWriter().NumCols())
 				b.nindex.MetadataWriter().ForEachArg(
 					func(i int, ad *column.ArgsDictWriter, col column.AttrValColumn) {
 						if _, ok := vline.StructAttrs[ad.Name()]; ok {

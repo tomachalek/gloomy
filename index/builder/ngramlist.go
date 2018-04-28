@@ -40,7 +40,7 @@ type NgramNode struct {
 	right *NgramNode
 	ngram []string
 	count int
-	args  []column.AttrVal
+	args  column.Metadata
 }
 
 func (n *NgramNode) GetCount() int {
@@ -76,7 +76,7 @@ func (n *RAMNgramList) Size() int {
 	return n.numNodes
 }
 
-func (n *RAMNgramList) Add(ngram []string, metadata []column.AttrVal) {
+func (n *RAMNgramList) Add(ngram []string, metadata column.Metadata) {
 	if n.root == nil {
 		n.root = &NgramNode{ngram: ngram, count: 1, args: metadata}
 		n.numNodes = 1

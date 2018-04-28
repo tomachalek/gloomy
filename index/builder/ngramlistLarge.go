@@ -106,7 +106,7 @@ func (nn *LargeNgramList) Size() int {
 	return nn.currNgramList.Size()
 }
 
-func (nn *LargeNgramList) Add(ngram []string, metadata []column.AttrVal) {
+func (nn *LargeNgramList) Add(ngram []string, metadata column.Metadata) {
 	nn.currNgramList.Add(ngram, metadata)
 	if nn.currNgramList.Size() >= nn.chunkSize {
 		nn.saveChunk()

@@ -19,12 +19,13 @@ package index
 
 import (
 	"fmt"
-	"github.com/tomachalek/gloomy/index/column"
-	"github.com/tomachalek/gloomy/wdict"
 	"log"
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/tomachalek/gloomy/index/column"
+	"github.com/tomachalek/gloomy/wdict"
 )
 
 const (
@@ -404,7 +405,7 @@ func (nib *DynamicNgramIndex) GetNgramsAt(position int) *NgramSearchResult {
 
 // AddNgram adds a new n-gram represented as an array
 // of indices to the index
-func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int, metadata []column.AttrVal) {
+func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int, metadata column.Metadata) {
 	sp := nib.findSplitPosition(ngram)
 	for i := 0; i < len(nib.index.values); i++ {
 		col := nib.index.values[i]
