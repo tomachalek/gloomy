@@ -5,7 +5,7 @@
   "ngramIgnoreStructs": [],
   "ngramStopStrings": [".", ":"],
   "ngramIgnoreStrings": ["\"", ","],
-  "ngramMatchPrefix": ["t", "i", "m"],
+  "ngramFilter": {"lib": "./myfilters.so", "fn": "foo"},
   "outDirectory": "/home/tomas/work/data/ngramy/syn_v4",
   "logProgressEachNth": 500000,
   "minNgramFreq": 4,
