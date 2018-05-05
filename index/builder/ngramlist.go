@@ -60,7 +60,7 @@ func dfsWalkthruRecursive(node *NgramNode, fn func(n *NgramRecord)) {
 	if node.left != nil {
 		dfsWalkthruRecursive(node.left, fn)
 	}
-	fn(&NgramRecord{Ngram: node.ngram, Count: node.count, Args: node.args})
+	fn(&NgramRecord{Ngram: node.ngram, Count: node.count, Metadata: node.args})
 	if node.right != nil {
 		dfsWalkthruRecursive(node.right, fn)
 	}

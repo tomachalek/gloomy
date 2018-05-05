@@ -28,9 +28,9 @@ import (
 )
 
 type NgramRecord struct {
-	Ngram []string
-	Count int
-	Args  column.Metadata
+	Ngram    []string
+	Count    int
+	Metadata column.Metadata
 }
 
 // NgramList specifies a required ngram list implementation
@@ -201,7 +201,7 @@ func saveEncodedNgrams(builder *IndexBuilder, minFreq int) error {
 			for i, w := range item.Ngram {
 				encodedNg[i] = builder.wordDict.GetTokenIndex(w)
 			}
-			builder.nindex.AddNgram(encodedNg, item.Count, item.Args)
+			builder.nindex.AddNgram(encodedNg, item.Count, item.Metadata)
 		}
 	})
 	builder.nindex.Finish()

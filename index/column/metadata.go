@@ -37,15 +37,15 @@ func (mw *MetadataWriter) NumCols() int {
 	return len(mw.dicts)
 }
 
-func (mw *MetadataWriter) Get(idx int) []AttrVal {
-	ans := make([]AttrVal, len(mw.cols))
+func (mw *MetadataWriter) Get(idx int) Metadata {
+	ans := make(Metadata, len(mw.cols))
 	for i, v := range mw.cols {
 		ans[i] = v.Get(idx)
 	}
 	return ans
 }
 
-func (mw *MetadataWriter) Set(idx int, val []AttrVal) {
+func (mw *MetadataWriter) Set(idx int, val Metadata) {
 	for i := 0; i < len(mw.cols); i++ {
 		mw.cols[i].Set(idx, val[i])
 	}
