@@ -133,7 +133,7 @@ func (nn *LargeNgramList) saveChunk() error {
 	nn.currNgramList.ForEach(func(n *NgramRecord) {
 		err := enc.Encode(n)
 		if err != nil {
-			log.Print("Failed to encode record")
+			log.Printf("Failed to encode record: %s", err)
 		}
 	})
 	nn.chunks = append(nn.chunks, chunkPath)

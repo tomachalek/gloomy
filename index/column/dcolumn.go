@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file contains an implementation of IndexColumn which is
-// a storage for n-ngram tree nodes with the same depth (= position
-// within an n-gram)
-
 package column
 
 // This file contains an implementation of metadata columns

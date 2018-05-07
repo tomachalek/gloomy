@@ -27,10 +27,12 @@ import (
 	"github.com/tomachalek/vertigo"
 )
 
+// ------------------------------------------------
+
 type NgramRecord struct {
 	Ngram    []string
 	Count    int
-	Metadata column.Metadata
+	Metadata *column.MetadataList
 }
 
 // NgramList specifies a required ngram list implementation
@@ -142,17 +144,6 @@ func (b *IndexBuilder) ProcToken(vline *vertigo.Token) {
 	} else { // parser encoutered a structure
 		b.buffer.Reset()
 	}
-}
-
-func (b *IndexBuilder) CreateIndices() {
-	counters := make([][]int, b.ngramSize-1)
-	b.ngramList.ForEach(func(item *NgramRecord) {
-		if item.Count >= b.minNgramFreq {
-			for i := range counters {
-				fmt.Println(i) // TODO
-			}
-		}
-	})
 }
 
 func CreateIndexBuilder(conf *gconf.IndexBuilderConf, ngramSize int) *IndexBuilder {

@@ -35,32 +35,44 @@ func ngramsCmp(n1 []string, n2 []string) int {
 	return 0
 }
 
-type NgramNode struct {
-	left  *NgramNode
-	right *NgramNode
-	ngram []string
-	count int
-	args  column.Metadata
+// ------------------------------------------------
+
+type ngramNode struct {
+	left     *ngramNode
+	right    *ngramNode
+	ngram    []string
+	count    int
+	metadata *column.MetadataList
 }
 
-func (n *NgramNode) GetCount() int {
+func (n *ngramNode) GetCount() int {
 	return n.count
 }
 
-func (n *NgramNode) GetNgram() []string {
+func (n *ngramNode) GetNgram() []string {
 	return n.ngram
 }
 
+func newNgramNode(ngram []string, metadata column.Metadata) *ngramNode {
+	meta := &column.MetadataList{}
+	meta.Add(metadata)
+	return &ngramNode{
+		ngram:    ngram,
+		count:    1,
+		metadata: meta,
+	}
+}
+
 type RAMNgramList struct {
-	root     *NgramNode
+	root     *ngramNode
 	numNodes int
 }
 
-func dfsWalkthruRecursive(node *NgramNode, fn func(n *NgramRecord)) {
+func dfsWalkthruRecursive(node *ngramNode, fn func(n *NgramRecord)) {
 	if node.left != nil {
 		dfsWalkthruRecursive(node.left, fn)
 	}
-	fn(&NgramRecord{Ngram: node.ngram, Count: node.count, Metadata: node.args})
+	fn(&NgramRecord{Ngram: node.ngram, Count: node.count, Metadata: node.metadata})
 	if node.right != nil {
 		dfsWalkthruRecursive(node.right, fn)
 	}
@@ -78,7 +90,7 @@ func (n *RAMNgramList) Size() int {
 
 func (n *RAMNgramList) Add(ngram []string, metadata column.Metadata) {
 	if n.root == nil {
-		n.root = &NgramNode{ngram: ngram, count: 1, args: metadata}
+		n.root = newNgramNode(ngram, metadata)
 		n.numNodes = 1
 
 	} else {
@@ -90,7 +102,7 @@ func (n *RAMNgramList) Add(ngram []string, metadata column.Metadata) {
 					item = item.left
 
 				} else {
-					item.left = &NgramNode{ngram: ngram, count: 1, args: metadata}
+					item.left = newNgramNode(ngram, metadata)
 					n.numNodes++
 					item = nil // stop the iteration
 				}
@@ -99,13 +111,12 @@ func (n *RAMNgramList) Add(ngram []string, metadata column.Metadata) {
 					item = item.right
 
 				} else {
-					item.right = &NgramNode{ngram: ngram, count: 1, args: metadata}
+					item.right = newNgramNode(ngram, metadata)
 					n.numNodes++
 					item = nil // stop the iteration
 				}
 			case 0:
-				// TODO here we have actually quite a problem as the
-				// 'metadata' of the incoming item is ignored
+				item.metadata.Add(metadata)
 				item.count++
 				item = nil // stop the iteration
 			}

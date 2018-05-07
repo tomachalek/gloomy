@@ -18,6 +18,50 @@
 
 package column
 
+import "fmt"
+
+type metadataItem struct {
+	Value Metadata
+	Next  *metadataItem
+}
+
+// MetadataList is used as a linked list of metadata records
+// when inserting new n-grams. This is used only when building
+// indices (returned metadata from search are slices)
+type MetadataList struct {
+	First *metadataItem
+	Last  *metadataItem
+	Size  int
+}
+
+func (m *MetadataList) Add(value Metadata) {
+	tmp := &metadataItem{Value: value, Next: nil}
+	if m.First == nil {
+		m.First = tmp
+	}
+	if m.Last != nil {
+		m.Last.Next = tmp
+	}
+	m.Last = tmp
+	m.Size++
+}
+
+func (m *MetadataList) ForEach(fn func(val Metadata, i int)) {
+	i := 0
+	for curr := m.First; curr != nil; curr = curr.Next {
+		fn(curr.Value, i)
+		i++
+	}
+}
+
+func (m *MetadataList) ToSlice() []Metadata {
+	ans := make([]Metadata, m.Size)
+	m.ForEach(func(val Metadata, i int) {
+		ans[i] = val
+	})
+	return ans
+}
+
 // MetadataWriter is used for writing metadata attributes
 // during indexing. It collects individual metadata
 // columns into a single object providing similar methods
@@ -45,9 +89,14 @@ func (mw *MetadataWriter) Get(idx int) Metadata {
 	return ans
 }
 
-func (mw *MetadataWriter) Set(idx int, val Metadata) {
+func (mw *MetadataWriter) Set(idx int, valList *MetadataList) {
 	for i := 0; i < len(mw.cols); i++ {
-		mw.cols[i].Set(idx, val[i])
+		valList.ForEach(func(val Metadata, j int) {
+			if j > 0 {
+				fmt.Println("Written ", val, j)
+			}
+			mw.cols[i].Set(idx, val[i]) // TODO here we store only last item !!!
+		})
 	}
 }
 
