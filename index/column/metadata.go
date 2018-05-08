@@ -18,8 +18,6 @@
 
 package column
 
-import "fmt"
-
 type metadataItem struct {
 	Value Metadata
 	Next  *metadataItem
@@ -92,10 +90,7 @@ func (mw *MetadataWriter) Get(idx int) Metadata {
 func (mw *MetadataWriter) Set(idx int, valList *MetadataList) {
 	for i := 0; i < len(mw.cols); i++ {
 		valList.ForEach(func(val Metadata, j int) {
-			if j > 0 {
-				fmt.Println("Written ", val, j)
-			}
-			mw.cols[i].Set(idx, val[i]) // TODO here we store only last item !!!
+			mw.cols[i].Set(idx+j, val[i])
 		})
 	}
 }

@@ -17,7 +17,9 @@
 // and higher level methods for searching a specific word.
 package index
 
-import "github.com/tomachalek/gloomy/index/column"
+import (
+	"github.com/tomachalek/gloomy/index/column"
+)
 
 // ------------------------------------------------
 
@@ -26,6 +28,7 @@ type DynamicNgramIndex struct {
 	index          *NgramIndex
 	cursors        []int
 	initialLength  int
+	metadataCursor int
 	metadataWriter *column.MetadataWriter
 }
 
@@ -41,6 +44,7 @@ func NewDynamicNgramIndex(ngramSize int, initialLength int, attrMap map[string]s
 		index:          NewNgramIndex(ngramSize, initialLength, attrMap),
 		cursors:        cursors,
 		metadataWriter: column.NewMetadataWriter(attrMap),
+		metadataCursor: -1,
 	}
 }
 
@@ -77,9 +81,14 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int, metadataList *col
 		}
 
 		if i == sp-1 {
+			// next n-gram position will be split so
+			// we have to extend the range of the current i-gram
+			// to include the new ngram we are adding.
 			col.Get(nib.cursors[i]).UpTo++
 
 		} else if i > sp-1 {
+			// here we add the words causing
+			// the n-gram to be unique
 			nib.cursors[i]++
 			upTo := 0
 			if i < len(nib.cursors)-1 {
@@ -88,20 +97,30 @@ func (nib *DynamicNgramIndex) AddNgram(ngram []int, count int, metadataList *col
 			col.Set(nib.cursors[i], &column.IndexItem{Index: ngram[i], UpTo: upTo})
 		}
 	}
+
 	lastPos := nib.cursors[len(nib.index.values)-1]
+
+	// n-gram counts
 	if lastPos >= nib.index.counts.Size()-1 {
 		nib.index.counts.Extend(nib.initialLength / 2)
 	}
 	nib.index.counts.Set(lastPos, column.AttrVal(count))
-	if lastPos >= nib.metadataWriter.Size()-1 {
-		nib.metadataWriter.Extend(nib.initialLength / 2)
+
+	// n-gram metadata
+	if lastPos+metadataList.Size >= nib.metadataWriter.Size()-1 {
+		// TODO improve heuristics
+		nib.metadataWriter.Extend(lastPos + metadataList.Size - nib.metadataWriter.Size() - 1 + nib.initialLength/2)
 	}
 	nib.metadataWriter.Set(lastPos, metadataList)
-	// TODO add metadata
+	nib.metadataCursor += metadataList.Size
+	lastColIdx := len(nib.index.values) - 1
+	nib.index.values[lastColIdx].Get(nib.cursors[lastColIdx]).UpTo = nib.metadataCursor
 }
 
 // findSplitPosition returns a position within an n-gram (i.e. value from 0...n-1)
 // where the currently stored n-gram "tree" should split to create a new branch.
+// Example: let's say we have already stored A-B-C and we want to store A-B-E.
+// Then the split position is 2 (assuming we start at zero).
 func (nib *DynamicNgramIndex) findSplitPosition(ngram []int) int {
 	for i := 0; i < len(ngram); i++ {
 		if nib.cursors[i] == -1 || ngram[i] != nib.index.values[i].Get(nib.cursors[i]).Index {
